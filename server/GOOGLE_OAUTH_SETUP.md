@@ -210,3 +210,51 @@ If you encounter issues:
 ---
 
 🎉 **You're all set!** Your Email Bot is now configured with Google OAuth for user authentication and AWS SES for reliable email sending.
+
+You can upload your entire project folder manually to Vercel. Here's how:
+
+## **Manual Upload to Vercel:**
+
+### **Step 1: Prepare Your Files**
+
+Your project is located at:
+
+```
+/Users/main/Documents/CodeAppSoftware/Kathan/Email_Bot-email_dev
+```
+
+### **Step 2: Create a ZIP File**
+
+1. **Right-click** on the `Email_Bot-email_dev` folder
+2. **Select "Compress"** (on Mac) or "Send to > Compressed folder" (on Windows)
+3. This creates `Email_Bot-email_dev.zip`
+
+### **Step 3: Upload to Vercel**
+
+1. Go to [vercel.com](https://vercel.com)
+2. **Sign in** to your account
+3. Click **"New Project"**
+4. Click **"Upload"** or **"Import Third-Party Git Repository"**
+5. **Drag and drop** your `Email_Bot-email_dev.zip` file
+6. Click **"Deploy"**
+
+### **Step 4: Add Environment Variables**
+
+After deployment:
+
+1. Go to your project dashboard
+2. Click **"Settings"**
+3. Click **"Environment Variables"**
+4. Add each variable from your `.env` file:
+
+```
+<code_block_to_apply_changes_from>
+```
+
+### **Important Notes:**
+
+- **Update `GOOGLE_REDIRECT_URI`** to use your actual Vercel domain (you'll get this after deployment)
+- **Make sure all files are included** in the ZIP
+- **The `vercel.json` file** should be in the root of your ZIP
+
+Would you like me to help you create the ZIP file or guide you through any specific step?
