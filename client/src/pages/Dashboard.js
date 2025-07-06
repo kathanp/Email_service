@@ -9,8 +9,6 @@ function Dashboard() {
   const navigate = useNavigate();
   const { 
     stats, 
-    recentActivity, 
-    recentCampaigns, 
     isLoading,
     refreshAllData 
   } = useAppContext();
@@ -26,72 +24,7 @@ function Dashboard() {
     refreshAllData();
   }, [refreshAllData]);
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'success':
-        return '✅';
-      case 'error':
-        return '❌';
-      case 'warning':
-        return '⚠️';
-      case 'info':
-        return 'ℹ️';
-      default:
-        return '📧';
-    }
-  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'success':
-        return '#10b981';
-      case 'error':
-        return '#ef4444';
-      case 'warning':
-        return '#f59e0b';
-      case 'info':
-        return '#3b82f6';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const getCampaignStatusIcon = (status) => {
-    switch (status) {
-      case 'completed':
-        return '✅';
-      case 'sending':
-        return '📤';
-      case 'failed':
-        return '❌';
-      case 'pending':
-        return '⏳';
-      default:
-        return '📧';
-    }
-  };
-
-  const getCampaignStatusColor = (status) => {
-    switch (status) {
-      case 'completed':
-        return '#10b981';
-      case 'sending':
-        return '#3b82f6';
-      case 'failed':
-        return '#ef4444';
-      case 'pending':
-        return '#f59e0b';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const formatDuration = (seconds) => {
-    if (!seconds) return 'N/A';
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  };
 
   // Helper function to get user's display name
   const getUserDisplayName = () => {

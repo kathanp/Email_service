@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import './UsageStats.css';
-import { Mail, MailCheck, Edit, Inbox, BarChart2 } from 'lucide-react';
+import { Mail, MailCheck, Edit } from 'lucide-react';
 
 function UsageStats() {
   const [usageData, setUsageData] = useState(null);
@@ -32,12 +32,12 @@ function UsageStats() {
       
       // Fetch current subscription and usage
       const [subscriptionResponse, usageResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/v1/subscriptions/current', {
+        fetch('/api/v1/subscriptions/current', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         }),
-        fetch('http://localhost:8000/api/v1/subscriptions/usage', {
+        fetch('/api/v1/subscriptions/usage', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
