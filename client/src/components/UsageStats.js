@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useAppContext } from '../context/AppContext';
 import './UsageStats.css';
+import { Mail, MailCheck, Edit, Inbox, BarChart2 } from 'lucide-react';
 
 function UsageStats() {
   const [usageData, setUsageData] = useState(null);
@@ -7,8 +9,21 @@ function UsageStats() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const { templates } = useAppContext();
+
   useEffect(() => {
     fetchUsageData();
+    
+    // Listen for subscription changes
+    const handleSubscriptionChange = () => {
+      fetchUsageData();
+    };
+    
+    window.addEventListener('subscriptionChanged', handleSubscriptionChange);
+    
+    return () => {
+      window.removeEventListener('subscriptionChanged', handleSubscriptionChange);
+    };
   }, []);
 
   const fetchUsageData = async () => {
@@ -17,12 +32,12 @@ function UsageStats() {
       
       // Fetch current subscription and usage
       const [subscriptionResponse, usageResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/subscriptions/current', {
+        fetch('http://localhost:8000/api/v1/subscriptions/current', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         }),
-        fetch('http://localhost:8000/api/subscriptions/usage', {
+        fetch('http://localhost:8000/api/v1/subscriptions/usage', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -86,9 +101,11 @@ function UsageStats() {
     );
   }
 
+  // Use actual templates count from context instead of API
+  const actualTemplatesCount = templates.length;
   const emailPercentage = getUsagePercentage(usageData.emails_sent_this_month, planData.features.email_limit);
   const senderPercentage = getUsagePercentage(usageData.senders_used, planData.features.sender_limit);
-  const templatePercentage = getUsagePercentage(usageData.templates_created, planData.features.template_limit);
+  const templatePercentage = getUsagePercentage(actualTemplatesCount, planData.features.template_limit);
 
   return (
     <div className="usage-stats">
@@ -102,7 +119,7 @@ function UsageStats() {
       <div className="usage-grid">
         {/* Email Usage */}
         <div className="usage-card">
-          <div className="usage-icon">📧</div>
+          <div className="usage-icon"><Mail size={24} /></div>
           <div className="usage-content">
             <div className="usage-title">Emails Sent</div>
             <div className="usage-numbers">
@@ -131,7 +148,7 @@ function UsageStats() {
 
         {/* Sender Usage */}
         <div className="usage-card">
-          <div className="usage-icon">📮</div>
+          <div className="usage-icon"><MailCheck size={24} /></div>
           <div className="usage-content">
             <div className="usage-title">Sender Emails</div>
             <div className="usage-numbers">
@@ -160,11 +177,11 @@ function UsageStats() {
 
         {/* Template Usage */}
         <div className="usage-card">
-          <div className="usage-icon">📝</div>
+          <div className="usage-icon"><Edit size={24} /></div>
           <div className="usage-content">
             <div className="usage-title">Email Templates</div>
             <div className="usage-numbers">
-              <span className="usage-current">{usageData.templates_created}</span>
+              <span className="usage-current">{actualTemplatesCount}</span>
               <span className="usage-separator">/</span>
               <span className="usage-limit">{formatLimit(planData.features.template_limit)}</span>
             </div>
@@ -180,46 +197,13 @@ function UsageStats() {
             <div className="usage-remaining">
               {planData.features.template_limit !== -1 && (
                 <span>
-                  {Math.max(0, planData.features.template_limit - usageData.templates_created)} remaining
+                  {Math.max(0, planData.features.template_limit - actualTemplatesCount)} remaining
                 </span>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Plan Features */}
-      <div className="plan-features">
-        <h4>Plan Features</h4>
-        <div className="features-grid">
-          <div className={`feature-item ${planData.features.api_access ? 'enabled' : 'disabled'}`}>
-            <span className="feature-icon">{planData.features.api_access ? '🔌' : '🔌'}</span>
-            <span className="feature-text">API Access</span>
-          </div>
-          <div className={`feature-item ${planData.features.priority_support ? 'enabled' : 'disabled'}`}>
-            <span className="feature-icon">{planData.features.priority_support ? '🎯' : '🎯'}</span>
-            <span className="feature-text">Priority Support</span>
-          </div>
-          <div className={`feature-item ${planData.features.white_label ? 'enabled' : 'disabled'}`}>
-            <span className="feature-icon">{planData.features.white_label ? '🏷️' : '🏷️'}</span>
-            <span className="feature-text">White Label</span>
-          </div>
-          <div className={`feature-item ${planData.features.custom_integrations ? 'enabled' : 'disabled'}`}>
-            <span className="feature-icon">{planData.features.custom_integrations ? '🔗' : '🔗'}</span>
-            <span className="feature-text">Custom Integrations</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Upgrade CTA */}
-      {planData.plan === 'free' && (
-        <div className="upgrade-cta">
-          <p>Need more features? Upgrade your plan to unlock unlimited possibilities!</p>
-          <button className="upgrade-button" onClick={() => window.location.href = '/pricing'}>
-            View Plans
-          </button>
-        </div>
-      )}
     </div>
   );
 }

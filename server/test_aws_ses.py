@@ -1,22 +1,23 @@
-import os
 #!/usr/bin/env python3
 """
-Test AWS SES Configuration
+Test AWS SES Email Sending
 """
 
+import os
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError
 
-def test_aws_ses():
-    """Test AWS SES configuration."""
-    print("🧪 Testing AWS SES Configuration")
+def test_ses_email():
+    """Test sending an email via AWS SES."""
+    print("🧪 Testing AWS SES Email Sending")
     print("=" * 40)
     
     # AWS credentials
-    aws_access_key_id = "os.getenv("AWS_ACCESS_KEY_ID")"
-    aws_secret_access_key = "os.getenv("AWS_SECRET_ACCESS_KEY")"
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID", "")
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     region = "us-east-1"
     sender_email = "sale.rrimp@gmail.com"
+    recipient_email = "patelkathan244@gmail.com"
     
     try:
         # Create SES client
@@ -27,59 +28,51 @@ def test_aws_ses():
             aws_secret_access_key=aws_secret_access_key
         )
         
-        print("✅ AWS SES client created successfully")
+        # Test email content
+        subject = "Test Email from AWS SES"
+        body = """
+        This is a test email sent from AWS SES.
         
-        # Test connection by getting send quota
-        print("\n📊 Getting send quota...")
-        quota_response = ses_client.get_send_quota()
-        print(f"✅ Send quota retrieved successfully!")
-        print(f"   Max 24 hour send: {quota_response['Max24HourSend']} emails")
-        print(f"   Sent last 24 hours: {quota_response['SentLast24Hours']} emails")
-        print(f"   Max send rate: {quota_response['MaxSendRate']} emails/second")
+        If you receive this email, your AWS SES setup is working correctly!
         
-        # Check email verification status
-        print(f"\n📧 Checking verification status for {sender_email}...")
-        verification_response = ses_client.get_identity_verification_attributes(
-            Identities=[sender_email]
+        Best regards,
+        Email Bot Team
+        """
+        
+        # Send email
+        response = ses_client.send_email(
+            Source=sender_email,
+            Destination={
+                'ToAddresses': [recipient_email]
+            },
+            Message={
+                'Subject': {
+                    'Data': subject
+                },
+                'Body': {
+                    'Text': {
+                        'Data': body
+                    }
+                }
+            }
         )
         
-        if sender_email in verification_response['VerificationAttributes']:
-            status = verification_response['VerificationAttributes'][sender_email]['VerificationStatus']
-            if status == 'Success':
-                print(f"✅ {sender_email} is verified and ready to send emails!")
-            else:
-                print(f"⚠️  {sender_email} is not verified. Status: {status}")
-                print("   You need to verify this email in AWS SES console")
-                print("   Go to: https://console.aws.amazon.com/ses/")
-        else:
-            print(f"❌ {sender_email} not found in AWS SES")
-            print("   You need to verify this email in AWS SES console")
-            print("   Go to: https://console.aws.amazon.com/ses/")
+        print(f"✅ Test email sent successfully!")
+        print(f"📧 From: {sender_email}")
+        print(f"📧 To: {recipient_email}")
+        print(f"📧 Subject: {subject}")
+        print(f"📧 Message ID: {response['MessageId']}")
         
-        # Test sending a verification email if not verified
-        if sender_email not in verification_response['VerificationAttributes'] or \
-           verification_response['VerificationAttributes'][sender_email]['VerificationStatus'] != 'Success':
-            print(f"\n📧 Sending verification email to {sender_email}...")
-            try:
-                verify_response = ses_client.verify_email_identity(EmailAddress=sender_email)
-                print(f"✅ Verification email sent to {sender_email}")
-                print("   Check your email and click the verification link")
-            except ClientError as e:
-                print(f"❌ Error sending verification email: {e}")
-        
-        return True
-        
-    except NoCredentialsError:
-        print("❌ AWS credentials not found or invalid")
-        return False
     except ClientError as e:
         error_code = e.response['Error']['Code']
-        error_message = e.response['Error']['Message']
-        print(f"❌ AWS SES error: {error_code} - {error_message}")
-        return False
+        if error_code == 'MessageRejected':
+            print(f"❌ Email rejected: {e}")
+        elif error_code == 'MailFromDomainNotVerified':
+            print(f"❌ Sender domain not verified: {e}")
+        else:
+            print(f"❌ Error: {e}")
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
-        return False
 
 if __name__ == "__main__":
-    test_aws_ses() 
+    test_ses_email() 

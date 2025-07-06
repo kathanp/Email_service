@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Navigation.css';
+import { LogOut } from 'lucide-react';
 
 function Navigation() {
   const [user, setUser] = useState(null);
@@ -53,6 +54,30 @@ function Navigation() {
     return email.split('@')[0].substring(0, 2).toUpperCase();
   };
 
+  // Helper function to get user's display name
+  const getUserDisplayName = () => {
+    if (!user) return 'User';
+    
+    // Check for full_name first (from Google OAuth)
+    if (user.full_name) return user.full_name;
+    
+    // Check for name field
+    if (user.name) return user.name;
+    
+    // Check for first name from email (fallback)
+    if (user.email) {
+      const emailName = user.email.split('@')[0];
+      // Capitalize first letter and replace dots/underscores with spaces
+      return emailName
+        .replace(/[._]/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    
+    return 'User';
+  };
+
   return (
     <nav className="navigation">
       <div className={`nav-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -69,7 +94,7 @@ function Navigation() {
                   {getUserInitials(user.email)}
                 </div>
                 <div className="user-details">
-                  <div className="user-name">{user.name || 'User'}</div>
+                  <div className="user-name">{getUserDisplayName()}</div>
                   <div className="user-email">{user.email}</div>
                 </div>
                 <span className="user-arrow">▼</span>
@@ -79,7 +104,7 @@ function Navigation() {
                 onClick={handleLogout}
                 title="Logout"
               >
-                <span className="nav-icon">🚪</span>
+                <LogOut size={20} className="nav-icon" />
                 <span className="nav-label">Logout</span>
               </button>
             </div>
@@ -104,7 +129,7 @@ function Navigation() {
                   {getUserInitials(user.email)}
                 </div>
                 <div className="user-details">
-                  <div className="user-name">{user.name || 'User'}</div>
+                  <div className="user-name">{getUserDisplayName()}</div>
                   <div className="user-email">{user.email}</div>
                 </div>
               </div>
@@ -114,7 +139,7 @@ function Navigation() {
             className="nav-item logout" 
             onClick={handleLogout}
           >
-            <span className="nav-icon">🚪</span>
+            <LogOut size={20} className="nav-icon" />
             <span className="nav-label">Logout</span>
           </button>
         </div>

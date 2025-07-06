@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useAppContext } from '../context/AppContext';
 import './EmailTemplates.css';
 
 function EmailTemplates() {
-  const [templates, setTemplates] = useState([]);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     subject: '',
     body: ''
   });
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const { 
+    templates, 
+    isLoading, 
+    createTemplate, 
+    deleteTemplate, 
+    setTemplateAsDefault 
+  } = useAppContext();
 
   // Pre-filled generic cold email template
   const genericColdEmailTemplate = {
@@ -98,7 +104,7 @@ Red Roof Inn, Moss Point
 
 We offer flexible pricing for larger groups and extended stays. Our partnership with CLC Lodging enables us to provide competitive rates for corporate clients.
 
-**Contact Information:**
+Contact Information:
 Kathan Patel
 General Manager
 Tel: +1(228) 460-0615
@@ -141,37 +147,16 @@ Template Variables to Replace:
     setNewTemplate(redRoofInnTemplate);
   };
 
-  const setAsDefault = () => {
-    setNewTemplate(redRoofInnTemplate);
-    setSuccess('Red Roof Inn template loaded as default!');
-  };
-
-  const setTemplateAsDefault = async (template) => {
+  const handleSetTemplateAsDefault = async (template) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/templates/${template.id}/set-default`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const updatedTemplate = await response.json();
-        
-        // Update the templates list to reflect the change
-        setTemplates(templates.map(t => ({
-          ...t,
-          is_default: t.id === template.id ? true : false
-        })));
-        
+      const result = await setTemplateAsDefault(template);
+      
+      if (result.success) {
         // Clear the form when setting a new default template
         setNewTemplate({ name: '', subject: '', body: '' });
-        
         setSuccess(`${template.name} set as default template! Form cleared for new template creation.`);
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to set template as default');
+        setError(result.error || 'Failed to set template as default');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -191,28 +176,17 @@ Template Variables to Replace:
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/templates/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: newTemplate.name,
-          subject: newTemplate.subject,
-          body: newTemplate.body
-        })
+      const result = await createTemplate({
+        name: newTemplate.name,
+        subject: newTemplate.subject,
+        body: newTemplate.body
       });
 
-      if (response.ok) {
-        const createdTemplate = await response.json();
-        setTemplates([createdTemplate, ...templates]);
+      if (result.success) {
         setNewTemplate({ name: '', subject: '', body: '' });
         setSuccess('Template created successfully!');
       } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to create template');
+        setError(result.error || 'Failed to create template');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -227,58 +201,21 @@ Template Variables to Replace:
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/templates/${templateId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        setTemplates(templates.filter(template => template.id !== templateId));
+      const result = await deleteTemplate(templateId);
+      
+      if (result.success) {
         setSuccess('Template deleted successfully!');
       } else {
-        setError('Failed to delete template');
+        setError(result.error || 'Failed to delete template');
       }
     } catch (err) {
       setError('Network error. Please try again.');
-    }
-  };
-
-  const fetchTemplates = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/templates/', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data);
-      } else {
-        setError('Failed to load templates');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    // Get user data from localStorage
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-
     // Start with empty template form
     setNewTemplate({ name: '', subject: '', body: '' });
-
-    fetchTemplates();
   }, []);
 
   const formatDate = (dateString) => {
@@ -389,7 +326,7 @@ Template Variables to Replace:
                     </h4>
                     <div className="template-actions-buttons">
                       <button
-                        onClick={() => setTemplateAsDefault(template)}
+                        onClick={() => handleSetTemplateAsDefault(template)}
                         className={`set-default-button ${template.is_default ? 'is-default' : ''}`}
                         title={template.is_default ? 'Current default template' : 'Set as default'}
                       >

@@ -38,6 +38,26 @@ class StripeService:
                 "error": str(e)
             }
     
+    async def attach_payment_method(self, payment_method_id: str, customer_id: str) -> Dict:
+        """Attach a payment method to a customer."""
+        try:
+            payment_method = self.stripe.PaymentMethod.attach(
+                payment_method_id,
+                customer=customer_id
+            )
+            
+            logger.info(f"Attached payment method {payment_method_id} to customer {customer_id}")
+            return {
+                "success": True,
+                "payment_method": payment_method
+            }
+        except Exception as e:
+            logger.error(f"Error attaching payment method: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
     async def create_subscription(self, customer_id: str, plan: SubscriptionPlan, 
                                 billing_cycle: BillingCycle, payment_method_id: str = None) -> Dict:
         """Create a subscription for a customer."""
@@ -60,6 +80,15 @@ class StripeService:
                     "features": plan_details.features
                 }
             
+            # Attach payment method to customer if provided
+            if payment_method_id:
+                attach_result = await self.attach_payment_method(payment_method_id, customer_id)
+                if not attach_result["success"]:
+                    return {
+                        "success": False,
+                        "error": f"Failed to attach payment method: {attach_result['error']}"
+                    }
+            
             # Create subscription parameters
             subscription_params = {
                 "customer": customer_id,
@@ -78,14 +107,30 @@ class StripeService:
             subscription = self.stripe.Subscription.create(**subscription_params)
             
             logger.info(f"Created subscription {subscription.id} for customer {customer_id}")
+            
+            # Get current period dates with fallback
+            try:
+                current_period_start = datetime.fromtimestamp(subscription.current_period_start)
+            except (AttributeError, TypeError):
+                current_period_start = datetime.utcnow()
+                
+            try:
+                current_period_end = datetime.fromtimestamp(subscription.current_period_end)
+            except (AttributeError, TypeError):
+                # Set end date to 30 days from now for monthly, 365 for yearly
+                if billing_cycle == BillingCycle.MONTHLY:
+                    current_period_end = current_period_start + timedelta(days=30)
+                else:
+                    current_period_end = current_period_start + timedelta(days=365)
+            
             return {
                 "success": True,
                 "subscription_id": subscription.id,
                 "plan": plan,
                 "billing_cycle": billing_cycle,
                 "features": plan_details.features,
-                "current_period_start": datetime.fromtimestamp(subscription.current_period_start),
-                "current_period_end": datetime.fromtimestamp(subscription.current_period_end),
+                "current_period_start": current_period_start,
+                "current_period_end": current_period_end,
                 "status": subscription.status
             }
         except Exception as e:

@@ -1,9 +1,9 @@
-import os
 #!/usr/bin/env python3
 """
 Check Email Verification Status
 """
 
+import os
 import boto3
 from botocore.exceptions import ClientError
 
@@ -13,8 +13,8 @@ def check_verification():
     print("=" * 40)
     
     # AWS credentials
-    aws_access_key_id = "os.getenv("AWS_ACCESS_KEY_ID")"
-    aws_secret_access_key = "os.getenv("AWS_SECRET_ACCESS_KEY")"
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID", "")
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     region = "us-east-1"
     sender_email = "sale.rrimp@gmail.com"
     

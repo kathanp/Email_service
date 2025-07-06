@@ -122,7 +122,7 @@ function AuthPage() {
     setLoading(true);
     setErrors({});
     try {
-      const user = await apiRegister(registerData);
+      await apiRegister(registerData);
       // After registration, auto-login
       const result = await apiLogin({ email: registerData.email, password: registerData.password });
       localStorage.setItem('token', result.access_token);

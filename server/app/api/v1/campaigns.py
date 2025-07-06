@@ -181,8 +181,14 @@ async def create_and_send_campaign(
                 detail="File data not found"
             )
         
-        # Convert file data to DataFrame
-        df = pd.DataFrame(file_data)
+        # Convert file data to DataFrame - fix the DataFrame constructor issue
+        if file_doc.get('file_type') == 'excel':
+            df = pd.read_excel(io.BytesIO(file_data))
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only Excel files are supported for campaigns"
+            )
         
         # Get available columns
         available_columns = [col.strip() for col in df.columns.tolist()]

@@ -1,24 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchStats, fetchRecentActivity } from '../services/statsService';
+import { useAppContext } from '../context/AppContext';
 import UsageStats from '../components/UsageStats';
 import './Dashboard.css';
 
 function Dashboard() {
   const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({
-    totalCustomers: 0,
-    scheduledEmails: 0,
-    sentToday: 0,
-    totalSent: 0,
-    thisWeekSent: 0,
-    monthChange: 0,
-    todayChange: 0
-  });
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [recentCampaigns, setRecentCampaigns] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { 
+    stats, 
+    recentActivity, 
+    recentCampaigns, 
+    isLoading,
+    refreshAllData 
+  } = useAppContext();
 
   useEffect(() => {
     // Get user data from localStorage
@@ -27,63 +22,9 @@ function Dashboard() {
       setUser(JSON.parse(userData));
     }
 
-    // Fetch real data from API
-    const loadDashboardData = async () => {
-      try {
-        const [statsData, activityData, campaignsData] = await Promise.all([
-          fetchStats(),
-          fetchRecentActivity(),
-          fetchRecentCampaigns()
-        ]);
-
-        setStats({
-          totalCustomers: statsData.totalCustomers || 0,
-          scheduledEmails: statsData.scheduledEmails || 0,
-          sentToday: statsData.sentToday || 0,
-          totalSent: statsData.totalSent || 0,
-          thisWeekSent: statsData.thisWeekSent || 0,
-          monthChange: statsData.monthChange || 0,
-          todayChange: statsData.todayChange || 0
-        });
-
-        // Convert API activity data to dashboard format
-        const formattedActivity = activityData.map((activity, index) => ({
-          id: index + 1,
-          type: activity.type,
-          message: activity.message,
-          time: new Date(activity.time).toLocaleString(),
-          status: activity.status
-        }));
-
-        setRecentActivity(formattedActivity);
-        setRecentCampaigns(campaignsData);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        // Fallback to default data if API fails
-        setStats({
-          totalCustomers: 0,
-          scheduledEmails: 0,
-          sentToday: 0,
-          totalSent: 0,
-          thisWeekSent: 0,
-          monthChange: 0,
-          todayChange: 0
-        });
-        setRecentActivity([]);
-        setRecentCampaigns([]);
-        setIsLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
+    // Refresh data when component mounts
+    refreshAllData();
+  }, [refreshAllData]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -152,25 +93,28 @@ function Dashboard() {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  const fetchRecentCampaigns = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/stats/campaigns', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.slice(0, 5); // Get last 5 campaigns
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error fetching recent campaigns:', error);
-      return [];
+  // Helper function to get user's display name
+  const getUserDisplayName = () => {
+    if (!user) return 'User';
+    
+    // Check for full_name first (from Google OAuth)
+    if (user.full_name) return user.full_name;
+    
+    // Check for name field
+    if (user.name) return user.name;
+    
+    // Check for first name from email (fallback)
+    if (user.email) {
+      const emailName = user.email.split('@')[0];
+      // Capitalize first letter and replace dots/underscores with spaces
+      return emailName
+        .replace(/[._]/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     }
+    
+    return 'User';
   };
 
   if (isLoading) {
@@ -187,7 +131,7 @@ function Dashboard() {
       {/* Welcome Section */}
       <div className="welcome-section">
         <div className="welcome-content">
-          <h1>Welcome back, {user?.name || 'User'}! 👋</h1>
+          <h1>Welcome back, {getUserDisplayName()}! 👋</h1>
           <p>Here's what's happening with your email campaigns today.</p>
         </div>
         <div className="welcome-actions">
@@ -250,144 +194,7 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Dashboard Content Grid */}
-      <div className="dashboard-content">
-        {/* Recent Activity Section */}
-        <div className="activity-section">
-          <div className="section-header">
-            <h3>📊 Recent Activity</h3>
-            <button className="view-all-btn" onClick={() => navigate('/reports')}>
-              View All
-            </button>
-          </div>
-          <div className="activity-list">
-            {recentActivity.length === 0 ? (
-              <div className="no-activity">
-                <div className="empty-state">
-                  <span className="empty-icon">📊</span>
-                  <p>No recent activity</p>
-                  <small>Your activity will appear here</small>
-                </div>
-              </div>
-            ) : (
-              recentActivity.map((activity) => (
-                <div key={activity.id} className="activity-item">
-                  <div className="activity-icon" style={{ color: getStatusColor(activity.status) }}>
-                    {getStatusIcon(activity.status)}
-                  </div>
-                  <div className="activity-content">
-                    <p className="activity-message">{activity.message}</p>
-                    <span className="activity-time">{activity.time}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
 
-        {/* Recent Campaigns Section */}
-        <div className="campaigns-section">
-          <div className="section-header">
-            <h3>📧 Recent Campaigns</h3>
-            <button className="view-all-btn" onClick={() => navigate('/customers')}>
-              View All
-            </button>
-          </div>
-          <div className="campaigns-list">
-            {recentCampaigns.length === 0 ? (
-              <div className="no-campaigns">
-                <div className="empty-state">
-                  <span className="empty-icon">📧</span>
-                  <p>No recent campaigns</p>
-                  <small>Start your first campaign to see results here</small>
-                </div>
-              </div>
-            ) : (
-              recentCampaigns.map((campaign) => (
-                <div key={campaign.id} className="campaign-item">
-                  <div className="campaign-header">
-                    <h4>{campaign.name}</h4>
-                    <span 
-                      className="campaign-status"
-                      style={{ color: getCampaignStatusColor(campaign.status) }}
-                    >
-                      {getCampaignStatusIcon(campaign.status)} {campaign.status}
-                    </span>
-                  </div>
-                  <div className="campaign-details">
-                    <div className="campaign-stat">
-                      <span className="stat-label">Recipients:</span>
-                      <span className="stat-value">{campaign.recipients_count || 0}</span>
-                    </div>
-                    <div className="campaign-stat">
-                      <span className="stat-label">Sent:</span>
-                      <span className="stat-value success">{campaign.sent_count || 0}</span>
-                    </div>
-                    <div className="campaign-stat">
-                      <span className="stat-label">Failed:</span>
-                      <span className="stat-value error">{campaign.failed_count || 0}</span>
-                    </div>
-                    {campaign.duration && (
-                      <div className="campaign-stat">
-                        <span className="stat-label">Duration:</span>
-                        <span className="stat-value">{formatDuration(campaign.duration)}</span>
-                      </div>
-                    )}
-                    <div className="campaign-stat">
-                      <span className="stat-label">Created:</span>
-                      <span className="stat-value">{new Date(campaign.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Quick Actions Section */}
-        <div className="quick-actions-section">
-          <div className="section-header">
-            <h3>⚡ Quick Actions</h3>
-          </div>
-          <div className="quick-actions-grid">
-            <button 
-              className="quick-action-card"
-              onClick={() => navigate('/customers')}
-            >
-              <div className="action-icon">📧</div>
-              <h4>New Campaign</h4>
-              <p>Create and send a new email campaign</p>
-            </button>
-            
-            <button 
-              className="quick-action-card"
-              onClick={() => navigate('/files')}
-            >
-              <div className="action-icon">📁</div>
-              <h4>Upload Contacts</h4>
-              <p>Upload customer contact files</p>
-            </button>
-            
-            <button 
-              className="quick-action-card"
-              onClick={() => navigate('/email-templates')}
-            >
-              <div className="action-icon">📝</div>
-              <h4>Create Template</h4>
-              <p>Design a new email template</p>
-            </button>
-            
-            <button 
-              className="quick-action-card"
-              onClick={() => navigate('/sender-management')}
-            >
-              <div className="action-icon">📮</div>
-              <h4>Manage Senders</h4>
-              <p>Add or verify sender emails</p>
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -4,38 +4,39 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # MongoDB Configuration
-    MONGODB_URL: str = os.getenv("MONGODB_URI", "mongodb://localhost:27017/email_bot")
-    DATABASE_NAME: str = "email_bot"
+    MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb+srv://emailbotuser:eHl0X72QJP6Or5lf@cluster0.wdvicn9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "email_bot")
     
     # JWT Configuration
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
-    # AWS Configuration
+    # AWS Configuration (Legacy - can be removed after Gmail OAuth setup)
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
-    DEFAULT_SENDER_EMAIL: str = "sale.rrimp@gmail.com"
+    DEFAULT_SENDER_EMAIL: str = os.getenv("DEFAULT_SENDER_EMAIL", "sale.rrimp@gmail.com")
     
     # Google OAuth Configuration
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/google-auth/callback"
+    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/google-auth/callback")
     
     # Email Configuration (Legacy SMTP - can be removed after Gmail OAuth setup)
-    SMTP_SERVER: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SENDER_EMAIL: str = "sale.rrimp@gmail.com"
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SENDER_EMAIL: str = os.getenv("SENDER_EMAIL", "sale.rrimp@gmail.com")
     SENDER_PASSWORD: str = os.getenv("SENDER_PASSWORD", "")
     
     # CORS Configuration
     CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
     # Stripe Configuration
-    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
-    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
-    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    # Replace these with your actual Stripe keys from https://dashboard.stripe.com/apikeys
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "sk_test_your_stripe_secret_key_here")
+    STRIPE_PUBLISHABLE_KEY: str = os.getenv("STRIPE_PUBLISHABLE_KEY", "pk_test_your_stripe_publishable_key_here")
+    STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "whsec_your_webhook_secret_here")
     
     class Config:
         env_file = ".env"

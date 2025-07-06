@@ -15,7 +15,6 @@ const CARD_ELEMENT_OPTIONS = {
       color: '#9e2146',
     },
   },
-  hidePostalCode: true,
   iconStyle: 'solid',
 };
 
@@ -75,6 +74,12 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
 
       if (response.ok) {
         onSuccess(result);
+        // Dispatch custom event for subscription change instead of page reload
+        window.dispatchEvent(new CustomEvent('subscriptionChanged'));
+        // Also refresh the page to ensure all components update
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         setError(result.detail || 'Failed to create subscription');
       }
@@ -90,7 +95,7 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="stripe-payment-form">
+    <form onSubmit={handleSubmit} className="stripe-payment-form" autoComplete="off">
       <div className="form-group">
         <label>Cardholder Name</label>
         <input
@@ -100,6 +105,7 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
           placeholder="John Doe"
           className="cardholder-input"
           required
+          autoComplete="off"
         />
       </div>
 
@@ -109,7 +115,7 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
           <CardElement options={CARD_ELEMENT_OPTIONS} />
         </div>
         <div className="card-info">
-          <span className="card-info-text">💳 Card number, expiry date, and CVC</span>
+          <span className="card-info-text">💳 Card number, expiry date, CVC, and ZIP code</span>
         </div>
       </div>
 

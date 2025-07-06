@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUpload, FaFileExcel, FaFilePdf, FaTrash, FaCog, FaDownload, FaEye } from 'react-icons/fa';
+import { FaUpload, FaFileExcel, FaFilePdf, FaTrash, FaCog, FaEye } from 'react-icons/fa';
 import './FileManager.css';
 
 const FileManager = () => {

@@ -11,6 +11,8 @@ from app.models.subscription import (
     SUBSCRIPTION_PLANS
 )
 from app.services.stripe_service import stripe_service
+from app.services.mock_subscription_service import mock_subscription_service
+from app.core.config import settings
 from app.db.mongodb import MongoDB
 
 router = APIRouter()
@@ -92,8 +94,9 @@ async def create_subscription(
 ):
     """Create a new subscription for the user."""
     try:
+        from bson import ObjectId
         users_collection = MongoDB.get_collection("users")
-        user = await users_collection.find_one({"_id": current_user.id})
+        user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
         
         if not user:
             raise HTTPException(
@@ -109,70 +112,126 @@ async def create_subscription(
                 detail="User already has an active subscription"
             )
         
-        # Create or get Stripe customer
-        customer_result = await stripe_service.create_customer(
-            str(user["_id"]), 
-            user["email"], 
-            user.get("full_name")
-        )
+        # Check if we should use mock service (when Stripe keys are not configured)
+        use_mock_service = not settings.STRIPE_SECRET_KEY or settings.STRIPE_SECRET_KEY == "test_key"
         
-        if not customer_result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create customer: {customer_result['error']}"
+        if use_mock_service:
+            # Use mock subscription service
+            subscription_result = await mock_subscription_service.create_mock_subscription(
+                str(user["_id"]),
+                subscription_data.plan,
+                subscription_data.billing_cycle
             )
-        
-        # Create Stripe subscription
-        subscription_result = await stripe_service.create_subscription(
-            customer_result["customer_id"],
-            subscription_data.plan,
-            subscription_data.billing_cycle,
-            subscription_data.stripe_payment_method_id
-        )
-        
-        if not subscription_result["success"]:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create subscription: {subscription_result['error']}"
-            )
-        
-        # Update user with subscription details
-        update_data = {
-            "subscription": {
-                "plan": subscription_data.plan,
-                "billing_cycle": subscription_data.billing_cycle,
-                "status": PaymentStatus.ACTIVE,
-                "stripe_customer_id": customer_result["customer_id"],
-                "stripe_subscription_id": subscription_result.get("subscription_id"),
-                "current_period_start": subscription_result.get("current_period_start", datetime.utcnow()),
-                "current_period_end": subscription_result.get("current_period_end", datetime.utcnow()),
-                "cancel_at_period_end": False
+            
+            if not subscription_result["success"]:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create mock subscription: {subscription_result['error']}"
+                )
+            
+            # Update user with subscription details
+            update_data = {
+                "subscription": {
+                    "plan": subscription_data.plan,
+                    "billing_cycle": subscription_data.billing_cycle,
+                    "status": PaymentStatus.ACTIVE,
+                    "stripe_customer_id": subscription_result["customer_id"],
+                    "stripe_subscription_id": subscription_result["subscription_id"],
+                    "current_period_start": subscription_result["current_period_start"],
+                    "current_period_end": subscription_result["current_period_end"],
+                    "cancel_at_period_end": False
+                }
             }
-        }
-        
-        await users_collection.update_one(
-            {"_id": user["_id"]},
-            {"$set": update_data}
-        )
-        
-        # Get updated user data
-        updated_user = await users_collection.find_one({"_id": user["_id"]})
-        plan_details = SUBSCRIPTION_PLANS[subscription_data.plan]
-        usage = await calculate_user_usage(current_user.id)
-        
-        return SubscriptionResponse(
-            id=str(updated_user["_id"]),
-            user_id=str(updated_user["_id"]),
-            plan=subscription_data.plan,
-            billing_cycle=subscription_data.billing_cycle,
-            status=PaymentStatus.ACTIVE,
-            current_period_start=subscription_result.get("current_period_start", datetime.utcnow()),
-            current_period_end=subscription_result.get("current_period_end", datetime.utcnow()),
-            cancel_at_period_end=False,
-            stripe_subscription_id=subscription_result.get("subscription_id"),
-            features=plan_details.features,
-            usage=usage
-        )
+            
+            await users_collection.update_one(
+                {"_id": user["_id"]},
+                {"$set": update_data}
+            )
+            
+            # Get updated user data
+            updated_user = await users_collection.find_one({"_id": user["_id"]})
+            plan_details = SUBSCRIPTION_PLANS[subscription_data.plan]
+            usage = await calculate_user_usage(current_user.id)
+            
+            return SubscriptionResponse(
+                id=str(updated_user["_id"]),
+                user_id=str(updated_user["_id"]),
+                plan=subscription_data.plan,
+                billing_cycle=subscription_data.billing_cycle,
+                status=PaymentStatus.ACTIVE,
+                current_period_start=subscription_result["current_period_start"],
+                current_period_end=subscription_result["current_period_end"],
+                cancel_at_period_end=False,
+                stripe_subscription_id=subscription_result["subscription_id"],
+                features=plan_details.features,
+                usage=usage
+            )
+        else:
+            # Use real Stripe service
+            # Create or get Stripe customer
+            customer_result = await stripe_service.create_customer(
+                str(user["_id"]), 
+                user["email"], 
+                user.get("full_name")
+            )
+            
+            if not customer_result["success"]:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create customer: {customer_result['error']}"
+                )
+            
+            # Create Stripe subscription
+            subscription_result = await stripe_service.create_subscription(
+                customer_result["customer_id"],
+                subscription_data.plan,
+                subscription_data.billing_cycle,
+                subscription_data.stripe_payment_method_id
+            )
+            
+            if not subscription_result["success"]:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to create subscription: {subscription_result['error']}"
+                )
+            
+            # Update user with subscription details
+            update_data = {
+                "subscription": {
+                    "plan": subscription_data.plan,
+                    "billing_cycle": subscription_data.billing_cycle,
+                    "status": PaymentStatus.ACTIVE,
+                    "stripe_customer_id": customer_result["customer_id"],
+                    "stripe_subscription_id": subscription_result.get("subscription_id"),
+                    "current_period_start": subscription_result.get("current_period_start", datetime.utcnow()),
+                    "current_period_end": subscription_result.get("current_period_end", datetime.utcnow()),
+                    "cancel_at_period_end": False
+                }
+            }
+            
+            await users_collection.update_one(
+                {"_id": user["_id"]},
+                {"$set": update_data}
+            )
+            
+            # Get updated user data
+            updated_user = await users_collection.find_one({"_id": user["_id"]})
+            plan_details = SUBSCRIPTION_PLANS[subscription_data.plan]
+            usage = await calculate_user_usage(current_user.id)
+            
+            return SubscriptionResponse(
+                id=str(updated_user["_id"]),
+                user_id=str(updated_user["_id"]),
+                plan=subscription_data.plan,
+                billing_cycle=subscription_data.billing_cycle,
+                status=PaymentStatus.ACTIVE,
+                current_period_start=subscription_result.get("current_period_start", datetime.utcnow()),
+                current_period_end=subscription_result.get("current_period_end", datetime.utcnow()),
+                cancel_at_period_end=False,
+                stripe_subscription_id=subscription_result.get("subscription_id"),
+                features=plan_details.features,
+                usage=usage
+            )
     except HTTPException:
         raise
     except Exception as e:
@@ -429,7 +488,7 @@ async def calculate_user_usage(user_id: str) -> dict:
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
         this_month_campaigns = await campaigns_collection.find({
-            "user_id": user_id,
+            "user_id": user_id,  # user_id is stored as string
             "created_at": {"$gte": month_start}
         }).to_list(length=None)
         
@@ -437,18 +496,18 @@ async def calculate_user_usage(user_id: str) -> dict:
         
         # Calculate total emails sent
         all_campaigns = await campaigns_collection.find({
-            "user_id": user_id
+            "user_id": user_id  # user_id is stored as string
         }).to_list(length=None)
         
         emails_sent_total = sum(campaign.get("successful", 0) for campaign in all_campaigns)
         
         # Get senders count
         senders_collection = MongoDB.get_collection("senders")
-        senders_count = await senders_collection.count_documents({"user_id": user_id})
+        senders_count = await senders_collection.count_documents({"user_id": user_id})  # user_id is stored as string
         
         # Get templates count
         templates_collection = MongoDB.get_collection("templates")
-        templates_count = await templates_collection.count_documents({"user_id": user_id})
+        templates_count = await templates_collection.count_documents({"user_id": user_id})  # user_id is stored as string
         
         # Get campaigns count
         campaigns_count = len(all_campaigns)

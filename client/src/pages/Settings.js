@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Settings.css';
+import { CreditCard } from 'lucide-react';
 
 function Settings() {
   const [user, setUser] = useState(null);
@@ -14,6 +15,30 @@ function Settings() {
 
   useEffect(() => {
     fetchUserData();
+    
+    // Add visibility change listener to refresh data when user returns to the tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchUserData();
+      }
+    };
+    
+    // Add listener for subscription changes
+    const handleSubscriptionChange = () => {
+      fetchUserData();
+    };
+    
+    // Add periodic refresh every 30 seconds to keep data in sync
+    const intervalId = setInterval(fetchUserData, 30000);
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('subscriptionChanged', handleSubscriptionChange);
+    
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('subscriptionChanged', handleSubscriptionChange);
+    };
   }, []);
 
   const fetchUserData = async () => {
@@ -38,8 +63,9 @@ function Settings() {
         setUser(userData);
       }
 
+      let subscriptionData = null;
       if (subscriptionResponse.ok) {
-        const subscriptionData = await subscriptionResponse.json();
+        subscriptionData = await subscriptionResponse.json();
         setSubscription(subscriptionData);
       }
 
@@ -49,20 +75,18 @@ function Settings() {
       }
 
       // Fetch payment method if user has a subscription
-      if (subscriptionResponse.ok) {
-        const subscriptionData = await subscriptionResponse.json();
-        if (subscriptionData.stripe_subscription_id) {
-          const paymentResponse = await fetch('http://localhost:8000/api/v1/subscriptions/payment-method', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (paymentResponse.ok) {
-            const paymentData = await paymentResponse.json();
-            setPaymentMethod(paymentData);
-          }
+      if (subscriptionData && subscriptionData.stripe_subscription_id) {
+        const paymentResponse = await fetch('http://localhost:8000/api/v1/subscriptions/payment-method', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (paymentResponse.ok) {
+          const paymentData = await paymentResponse.json();
+          setPaymentMethod(paymentData);
         }
       }
 
     } catch (err) {
+      console.error('Settings fetch error:', err);
       setError('Failed to load user data');
     } finally {
       setIsLoading(false);
@@ -95,11 +119,11 @@ function Settings() {
 
   const getCardBrandIcon = (brand) => {
     const icons = {
-      'visa': '💳',
-      'mastercard': '💳',
-      'amex': '💳',
-      'discover': '💳',
-      'default': '💳'
+      'visa': <CreditCard size={18} />,
+      'mastercard': <CreditCard size={18} />,
+      'amex': <CreditCard size={18} />,
+      'discover': <CreditCard size={18} />,
+      'default': <CreditCard size={18} />
     };
     return icons[brand?.toLowerCase()] || icons.default;
   };

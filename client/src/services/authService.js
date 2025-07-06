@@ -18,7 +18,7 @@ export async function login({ email, password }) {
   });
   if (!res.ok) throw new Error((await res.json()).detail || "Login failed");
   return await res.json();
-} 
+}
 
 export async function connectGmail() {
   // User clicks "Connect Gmail"
@@ -33,3 +33,44 @@ export async function connectGmail() {
   if (!res.ok) throw new Error((await res.json()).detail || "Gmail connection failed");
   return await res.json();
 }
+
+export const handleAuthError = (response) => {
+  if (response.status === 401 || response.status === 403) {
+    // Token is expired or invalid, redirect to login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    return true; // Indicates auth error was handled
+  }
+  return false; // No auth error
+};
+
+export const apiRequest = async (url, options = {}) => {
+  const token = localStorage.getItem('token');
+
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  };
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(url, config);
+
+    // Check for auth errors
+    if (handleAuthError(response)) {
+      return null; // Request was interrupted due to auth error
+    }
+
+    return response;
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+};

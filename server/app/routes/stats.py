@@ -14,8 +14,8 @@ async def get_stats_summary():
         stats_collection = MongoDB.get_collection("stats")
         campaigns_collection = MongoDB.get_collection("campaigns")
         
-        # Get overall stats
-        stats = await stats_collection.find_one({"_id": "email_stats"})
+        # Get overall stats with default values
+        stats = await stats_collection.find_one({"_id": "email_stats"}) or {}
         
         # Calculate time periods
         now = datetime.utcnow()
@@ -41,9 +41,9 @@ async def get_stats_summary():
             "created_at": {"$gte": month_ago}
         }).to_list(length=None)
         
-        # Calculate statistics
-        total_sent = stats.get("total_emails_sent", 0) if stats else 0
-        total_campaigns = stats.get("total_campaigns", 0) if stats else 0
+        # Calculate statistics with safe defaults
+        total_sent = stats.get("total_emails_sent", 0)
+        total_campaigns = stats.get("total_campaigns", 0)
         
         # Today's stats
         today_sent = sum(campaign.get("successful", 0) for campaign in today_campaigns)
@@ -95,7 +95,7 @@ async def get_stats_summary():
             "todaySuccessRate": round(today_success_rate, 1),
             "yesterdaySuccessRate": round(yesterday_success_rate, 1),
             "overallSuccessRate": round(overall_success_rate, 1),
-            "lastUpdated": stats.get("last_updated", now) if stats else now,
+            "lastUpdated": stats.get("last_updated", now),
             "periods": {
                 "today": {
                     "sent": today_sent,
@@ -165,7 +165,7 @@ async def get_recent_activity(limit: int = 10):
         campaigns_collection = MongoDB.get_collection("campaigns")
         
         # Get recent campaigns and convert to activity format
-        campaigns = await campaigns_collection.find().sort("date", -1).limit(limit).to_list(length=None)
+        campaigns = await campaigns_collection.find().sort("created_at", -1).limit(limit).to_list(length=None)
         
         activities = []
         for campaign in campaigns:
@@ -173,7 +173,7 @@ async def get_recent_activity(limit: int = 10):
                 "id": str(campaign["_id"]),
                 "type": "email_campaign",
                 "message": f"Email campaign sent to {campaign.get('total_contacts', 0)} contacts",
-                "time": campaign["date"].isoformat(),
+                "time": campaign["created_at"].isoformat(),
                 "status": "success" if campaign.get("emails_sent", 0) > 0 else "error",
                 "details": {
                     "emails_sent": campaign.get("emails_sent", 0),

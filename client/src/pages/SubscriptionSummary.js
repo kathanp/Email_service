@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
@@ -28,7 +28,7 @@ function SubscriptionSummary() {
 
   const handleSubscriptionSuccess = (result) => {
     alert('Subscription created successfully!');
-    navigate('/dashboard');
+    navigate('/settings');
   };
 
   const handleSubscriptionError = (error) => {

@@ -108,8 +108,8 @@ SUBSCRIPTION_PLANS = {
             white_label=False,
             custom_integrations=False
         ),
-        stripe_price_id_monthly="price_starter_monthly",
-        stripe_price_id_yearly="price_starter_yearly"
+        stripe_price_id_monthly="price_1RhenG4dIfz8S6zvkFNwAJkJ",
+        stripe_price_id_yearly="price_1Rhenr4dIfz8S6zvooo5ZyKu"
     ),
     SubscriptionPlan.PROFESSIONAL: SubscriptionPlanDetails(
         plan_id="professional",
@@ -125,8 +125,8 @@ SUBSCRIPTION_PLANS = {
             white_label=False,
             custom_integrations=False
         ),
-        stripe_price_id_monthly="price_professional_monthly",
-        stripe_price_id_yearly="price_professional_yearly"
+        stripe_price_id_monthly="price_1RhepD4dIfz8S6zvNDb8cZ2i",
+        stripe_price_id_yearly="price_1Rhepb4dIfz8S6zvz3bTAIKn"
     ),
     SubscriptionPlan.ENTERPRISE: SubscriptionPlanDetails(
         plan_id="enterprise",
@@ -142,7 +142,7 @@ SUBSCRIPTION_PLANS = {
             white_label=True,
             custom_integrations=True
         ),
-        stripe_price_id_monthly="price_enterprise_monthly",
-        stripe_price_id_yearly="price_enterprise_yearly"
+        stripe_price_id_monthly="price_1Rheq84dIfz8S6zvs4Sk55zR",
+        stripe_price_id_yearly="price_1Rheqq4dIfz8S6zvZtah4C1v"
     )
 } 
