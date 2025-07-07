@@ -8,11 +8,13 @@ function GoogleCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
       try {
         const code = searchParams.get('code');
+        console.log('Google callback received with code:', code);
         
         if (!code) {
           setError('No authorization code received');
@@ -22,9 +24,11 @@ function GoogleCallback() {
 
         // Call the backend to handle the Google OAuth callback
         const response = await fetch(`${API_ENDPOINTS.GOOGLE_AUTH}/callback?code=${code}`);
+        console.log('Backend response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
+          console.log('Backend response data:', data);
           
           // Use the data from backend response if available, otherwise create mock data
           const userData = data.user || {
@@ -40,10 +44,16 @@ function GoogleCallback() {
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(userData));
           
-          // Redirect to dashboard
-          navigate('/dashboard');
+          console.log('Stored token and user data, redirecting to dashboard...');
+          setSuccess(true);
+          
+          // Redirect to dashboard with a small delay to ensure state updates
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 1000);
         } else {
           const errorData = await response.json();
+          console.error('Backend error:', errorData);
           setError(errorData.detail || 'Google authentication failed');
         }
       } catch (error) {
@@ -71,6 +81,29 @@ function GoogleCallback() {
     );
   }
 
+  if (success) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1>Authentication Successful!</h1>
+            <p>Redirecting to dashboard...</p>
+          </div>
+          <div className="success-message">
+            <p>✅ Google login successful!</p>
+            <p>You will be redirected to the dashboard in a moment.</p>
+          </div>
+          <button 
+            className="auth-button" 
+            onClick={() => navigate('/dashboard', { replace: true })}
+          >
+            Go to Dashboard Now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="auth-container">
@@ -82,7 +115,7 @@ function GoogleCallback() {
           <div className="error-message">{error}</div>
           <button 
             className="auth-button" 
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/')}
           >
             Back to Login
           </button>
