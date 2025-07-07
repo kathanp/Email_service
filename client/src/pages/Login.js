@@ -87,16 +87,9 @@ function AuthPage() {
           setSuccess('Login successful! Redirecting...');
           setTimeout(() => navigate('/dashboard'), 1000);
         } else {
-          // For registration, automatically log in the user and redirect to dashboard
-          localStorage.setItem('token', data.access_token || 'registration_token_' + Date.now());
-          localStorage.setItem('user', JSON.stringify(data.user || {
-            id: data.id,
-            email: formData.email,
-            username: formData.name,
-            full_name: formData.name
-          }));
-          setSuccess('Registration successful! Redirecting to dashboard...');
-          setTimeout(() => navigate('/dashboard'), 1000);
+          setSuccess('Registration successful! Please log in.');
+          setIsLogin(true);
+          setFormData({ name: '', email: '', password: '', confirmPassword: '' });
         }
       } else {
         setError(data.detail || (isLogin ? 'Login failed' : 'Registration failed'));

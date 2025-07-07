@@ -15,13 +15,8 @@ function Dashboard() {
   useEffect(() => {
     // Get user data from localStorage
     const userData = localStorage.getItem('user');
-    console.log('Dashboard: userData from localStorage:', userData);
     if (userData) {
-      const parsedUser = JSON.parse(userData);
-      console.log('Dashboard: parsed user data:', parsedUser);
-      setUser(parsedUser);
-    } else {
-      console.log('Dashboard: No user data found in localStorage');
+      setUser(JSON.parse(userData));
     }
   }, []); // Empty dependency array to run only once on mount
 
@@ -100,18 +95,18 @@ function Dashboard() {
         <div className="stat-card">
           <div className="stat-icon">📅</div>
           <div className="stat-content">
-            <h3>{stats.totalCampaigns.toLocaleString()}</h3>
-            <p>Total Campaigns</p>
+            <h3>{stats.scheduledEmails.toLocaleString()}</h3>
+            <p>Scheduled Emails</p>
           </div>
         </div>
         
         <div className="stat-card">
           <div className="stat-icon">📤</div>
           <div className="stat-content">
-            <h3>{stats.emailsSentToday.toLocaleString()}</h3>
+            <h3>{stats.sentToday.toLocaleString()}</h3>
             <p>Sent Today</p>
-            <span className="stat-change positive">
-              +0%
+            <span className={`stat-change ${stats.todayChange >= 0 ? 'positive' : 'negative'}`}>
+              {stats.todayChange >= 0 ? '+' : ''}{stats.todayChange}%
             </span>
           </div>
         </div>
@@ -119,10 +114,10 @@ function Dashboard() {
         <div className="stat-card">
           <div className="stat-icon">📊</div>
           <div className="stat-content">
-            <h3>{stats.totalEmails.toLocaleString()}</h3>
-            <p>Total Emails</p>
-            <span className="stat-change positive">
-              +0%
+            <h3>{stats.totalSent.toLocaleString()}</h3>
+            <p>Total Sent</p>
+            <span className={`stat-change ${stats.monthChange >= 0 ? 'positive' : 'negative'}`}>
+              {stats.monthChange >= 0 ? '+' : ''}{stats.monthChange}%
             </span>
           </div>
         </div>

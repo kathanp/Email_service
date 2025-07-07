@@ -54,19 +54,19 @@ export const AppProvider = ({ children }) => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await apiRequest(`${API_ENDPOINTS.STATS}/overview`);
+      const response = await apiRequest(`${API_ENDPOINTS.STATS}/summary`);
       if (response.ok) {
         const data = await response.json();
         setStats(prevStats => ({
           ...prevStats,
-          totalEmails: data.total_campaigns || 0,
-          totalCampaigns: data.total_campaigns || 0,
-          totalTemplates: data.total_templates || 0,
-          totalCustomers: data.total_customers || 0,
-          totalSenders: data.total_senders || 0,
-          emailsSentToday: 0, // We'll add this later
-          emailsSentThisMonth: 0, // We'll add this later
-          successRate: 0 // We'll add this later
+          totalEmails: data.totalEmails || 0,
+          totalCampaigns: data.totalCampaigns || 0,
+          totalTemplates: data.totalTemplates || 0,
+          totalCustomers: data.totalCustomers || 0,
+          totalSenders: data.totalSenders || 0,
+          emailsSentToday: data.emailsSentToday || 0,
+          emailsSentThisMonth: data.emailsSentThisMonth || 0,
+          successRate: data.successRate || 0
         }));
       }
     } catch (error) {
@@ -109,7 +109,7 @@ export const AppProvider = ({ children }) => {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/`);
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data.templates || []);
+        setTemplates(data);
       }
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -158,6 +158,29 @@ export const AppProvider = ({ children }) => {
     }
   }, [apiRequest]);
 
+  const setDefaultTemplate = useCallback(async (templateId) => {
+    try {
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}/set-default`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const updatedTemplate = await response.json();
+        setTemplates(prev => prev.map(t => ({
+          ...t,
+          is_default: t.id === templateId
+        })));
+        return { success: true, template: updatedTemplate };
+      } else {
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail || 'Failed to set default template' };
+      }
+    } catch (error) {
+      console.error('Error setting default template:', error);
+      return { success: false, error: 'Network error' };
+    }
+  }, [apiRequest]);
+
   const deleteTemplate = useCallback(async (templateId) => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}`, {
@@ -183,6 +206,8 @@ export const AppProvider = ({ children }) => {
       try {
         await Promise.all([
           fetchStats(),
+          fetchActivity(),
+          fetchCampaignStats(),
           fetchTemplates()
         ]);
       } catch (error) {
@@ -193,7 +218,7 @@ export const AppProvider = ({ children }) => {
     };
 
     loadData();
-  }, [fetchStats, fetchTemplates]);
+  }, [fetchStats, fetchActivity, fetchCampaignStats, fetchTemplates]);
 
   const value = {
     stats,
@@ -201,9 +226,12 @@ export const AppProvider = ({ children }) => {
     loading,
     error,
     fetchStats,
+    fetchActivity,
+    fetchCampaignStats,
     fetchTemplates,
     createTemplate,
     updateTemplate,
+    setDefaultTemplate,
     deleteTemplate
   };
 
@@ -212,4 +240,4 @@ export const AppProvider = ({ children }) => {
       {children}
     </AppContext.Provider>
   );
-};
+}; 

@@ -92,21 +92,6 @@
   border: 1px solid #fcc;
 }
 
-.success-message {
-  background: #efe;
-  color: #363;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-size: 0.9rem;
-  border: 1px solid #cfc;
-  text-align: center;
-}
-
-.success-message p {
-  margin: 5px 0;
-}
-
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -222,6 +207,10 @@
 }
 
 .google-auth-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   background: white;
   color: #333;
   border: 2px solid #e1e5e9;
@@ -231,62 +220,64 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
   width: 100%;
 }
 
 .google-auth-button:hover {
+  background: #f8f9fa;
   border-color: #667eea;
+  transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .google-auth-button:active {
-  transform: translateY(1px);
+  transform: translateY(0);
 }
 
 .google-auth-button svg {
-  width: 20px;
-  height: 20px;
+  color: #4285f4;
+  font-size: 1.2rem;
 }
 
 .google-auth-button.disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 .google-auth-button.disabled:hover {
-  border-color: #e1e5e9;
+  transform: none;
   box-shadow: none;
 }
 
 .auth-footer {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
 }
 
 .auth-footer p {
   color: #666;
-  font-size: 0.9rem;
   margin: 0;
+  font-size: 0.95rem;
 }
 
 .switch-mode {
-  color: #667eea;
   background: none;
   border: none;
-  font-size: 0.9rem;
+  color: #667eea;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
-  margin-top: 10px;
+  transition: color 0.3s ease;
 }
 
 .switch-mode:hover {
-  color: #5a6fd8;
+  color: #764ba2;
 }
 
+/* Responsive design */
 @media (max-width: 480px) {
   .auth-card {
     padding: 30px 20px;
@@ -306,6 +297,7 @@
   }
 }
 
+/* Loading state */
 .auth-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -317,12 +309,12 @@
   box-shadow: none;
 }
 
+/* Success animation */
 @keyframes successPulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
 
 .auth-button.success {
-  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-  animation: successPulse 2s ease-in-out;
+  animation: successPulse 0.6s ease-in-out;
 } 

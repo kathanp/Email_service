@@ -13,7 +13,6 @@ function GoogleCallback() {
     const handleGoogleCallback = async () => {
       try {
         const code = searchParams.get('code');
-        console.log('Google callback received with code:', code);
         
         if (!code) {
           setError('No authorization code received');
@@ -23,33 +22,26 @@ function GoogleCallback() {
 
         // Call the backend to handle the Google OAuth callback
         const response = await fetch(`${API_ENDPOINTS.GOOGLE_AUTH}/callback?code=${code}`);
-        console.log('Backend response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Backend response data:', data);
+          console.log('Google callback response:', data);
           
-          // Create user data from Google response
-          const userData = {
-            id: 'google_user_' + Date.now(),
+          // Store the token and user data
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('user', JSON.stringify({
+            id: 'google_user_1',
             email: 'google.user@example.com',
             username: 'Google User',
             full_name: 'Google User'
-          };
+          }));
           
-          const token = data.access_token || 'google_token_' + Date.now();
+          console.log('Stored token, redirecting to dashboard...');
           
-          // Store the user data and token
-          localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(userData));
-          
-          console.log('Stored token and user data, redirecting to dashboard...');
-          
-          // Force redirect to dashboard immediately
+          // Force redirect to dashboard
           window.location.href = '/dashboard';
         } else {
           const errorData = await response.json();
-          console.error('Backend error:', errorData);
           setError(errorData.detail || 'Google authentication failed');
         }
       } catch (error) {
@@ -87,7 +79,7 @@ function GoogleCallback() {
           </div>
           <div className="error-message">{error}</div>
           <button 
-            className="auth-button" 
+            className="btn-primary auth-btn" 
             onClick={() => navigate('/')}
           >
             Back to Login
@@ -97,7 +89,16 @@ function GoogleCallback() {
     );
   }
 
-  return null;
+  return (
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1>Authentication Successful</h1>
+          <p>Redirecting to dashboard...</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default GoogleCallback; 

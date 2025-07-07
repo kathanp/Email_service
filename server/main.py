@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
 import logging
 import os
 from datetime import datetime, timedelta
@@ -49,7 +48,8 @@ async def register(request: Request):
         body = await request.json()
         email = body.get("email")
         password = body.get("password")
-        name = body.get("name", "")
+        username = body.get("username", "")
+        full_name = body.get("full_name", "")
         
         if not email or not password:
             raise HTTPException(
@@ -67,24 +67,17 @@ async def register(request: Request):
         users_db[email] = {
             "id": user_id,
             "email": email,
-            "username": name,
-            "full_name": name,
+            "username": username,
+            "full_name": full_name,
             "password": password,
             "created_at": datetime.utcnow()
         }
         
-        # Create access token for the new user
-        access_token = create_access_token(data={"sub": email})
-        
         return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": user_id,
-                "email": email,
-                "username": name,
-                "full_name": name
-            },
+            "id": user_id,
+            "email": email,
+            "username": username,
+            "full_name": full_name,
             "message": "User registered successfully"
         }
         
@@ -141,12 +134,11 @@ async def get_google_login_url():
     """Get Google OAuth login URL."""
     try:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-        # Redirect to backend API callback
-        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/api/v1/google-auth/callback")
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:3000/auth/callback")
         
         if not client_id:
             return {
-                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/api/v1/google-auth/callback&response_type=code&scope=email profile",
+                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=http://localhost:3000/auth/callback&response_type=code&scope=email profile",
                 "client_id": "test",
                 "message": "Using test client ID"
             }
@@ -169,76 +161,15 @@ async def get_google_login_url():
 async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
-        # Create user data
-        user_data = {
-            "id": "google_user_1",
-            "email": "google.user@example.com",
-            "username": "Google User",
-            "full_name": "Google User"
+        # Mock implementation - in real app, exchange code for tokens
+        # For now, return success and redirect info
+        return {
+            "message": "Google OAuth callback received",
+            "code": code,
+            "status": "success",
+            "redirect_url": "/dashboard",
+            "access_token": "mock_token_for_google_user"
         }
-        
-        token = "mock_token_for_google_user"
-        
-        # Return HTML page that will store token and redirect to dashboard
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Google OAuth Success</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                }}
-                .container {{
-                    text-align: center;
-                    background: rgba(255, 255, 255, 0.1);
-                    padding: 40px;
-                    border-radius: 20px;
-                    backdrop-filter: blur(10px);
-                }}
-                .spinner {{
-                    border: 4px solid rgba(255, 255, 255, 0.3);
-                    border-top: 4px solid white;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    animation: spin 1s linear infinite;
-                    margin: 20px auto;
-                }}
-                @keyframes spin {{
-                    0% {{ transform: rotate(0deg); }}
-                    100% {{ transform: rotate(360deg); }}
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>✅ Authentication Successful!</h1>
-                <p>Redirecting to dashboard...</p>
-                <div class="spinner"></div>
-            </div>
-            <script>
-                // Store authentication data
-                localStorage.setItem('token', '{token}');
-                localStorage.setItem('user', JSON.stringify({user_data}));
-                
-                // Redirect to dashboard
-                setTimeout(() => {{
-                    window.location.href = '/dashboard';
-                }}, 2000);
-            </script>
-        </body>
-        </html>
-        """
-        
-        return HTMLResponse(content=html_content)
         
     except Exception as e:
         logger.error(f"Google callback error: {str(e)}")
@@ -875,7 +806,7 @@ async def root():
 async def health():
     """Health check."""
     return {
-        "status": "healthy",
+        "status": "healthy", 
         "timestamp": datetime.utcnow().isoformat()
     }
 
