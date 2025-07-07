@@ -1,4 +1,8 @@
-import boto3
+try:
+    import boto3
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
 import logging
 from typing import List, Dict, Optional
 from datetime import datetime

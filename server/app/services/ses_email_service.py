@@ -1,4 +1,8 @@
-import boto3
+try:
+    import boto3
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
 import asyncio
 import logging
 from typing import List, Dict, Optional
@@ -11,6 +15,11 @@ logger = logging.getLogger(__name__)
 class SESEmailService:
     def __init__(self):
         """Initialize Amazon SES client with centralized credentials."""
+        if not BOTO3_AVAILABLE:
+            logger.warning("boto3 not available - SES functionality disabled")
+            self.ses_client = None
+            return
+            
         try:
             self.ses_client = boto3.client(
                 'ses',
@@ -22,11 +31,20 @@ class SESEmailService:
             logger.info("SES Email Service initialized with centralized credentials")
         except Exception as e:
             logger.error(f"Failed to initialize SES client: {e}")
-            raise
+            self.ses_client = None
 
     async def send_single_email(self, to_email: str, subject: str, body: str, 
                                html_body: Optional[str] = None) -> Dict:
         """Send a single email using Amazon SES."""
+        if not self.ses_client:
+            return {
+                'success': False,
+                'error_code': 'SERVICE_UNAVAILABLE',
+                'error_message': 'SES service not available',
+                'to_email': to_email,
+                'timestamp': datetime.utcnow()
+            }
+            
         try:
             # Prepare email content
             email_content = {
@@ -140,6 +158,11 @@ class SESEmailService:
 
     async def get_sending_statistics(self) -> Dict:
         """Get SES sending statistics."""
+        if not self.ses_client:
+            return {
+                'success': False,
+                'error': 'SES service not available'
+            }
         try:
             response = self.ses_client.get_send_statistics()
             return {
@@ -155,6 +178,11 @@ class SESEmailService:
 
     async def verify_email_identity(self, email: str) -> Dict:
         """Verify an email address with SES."""
+        if not self.ses_client:
+            return {
+                'success': False,
+                'error': 'SES service not available'
+            }
         try:
             response = self.ses_client.verify_email_identity(EmailAddress=email)
             logger.info(f"Verification email sent to {email}")
@@ -171,6 +199,11 @@ class SESEmailService:
 
     async def get_send_quota(self) -> Dict:
         """Get SES sending quota information."""
+        if not self.ses_client:
+            return {
+                'success': False,
+                'error': 'SES service not available'
+            }
         try:
             response = self.ses_client.get_send_quota()
             return {

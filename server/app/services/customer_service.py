@@ -3,7 +3,11 @@ from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
 from fastapi import HTTPException, status, UploadFile
-import pandas as pd
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
 import io
 from ..db.mongodb import MongoDB
 from ..models.customer import CustomerCreate, Customer
@@ -24,7 +28,12 @@ class CustomerService:
 
     async def import_customers(self, file: UploadFile, user_id: str) -> List[Customer]:
         """Import customers from uploaded file."""
-        try:
+        if not PANDAS_AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="File import functionality not available"
+            )
+            
             # Read file content
             content = await file.read()
             
