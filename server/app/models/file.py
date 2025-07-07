@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 from bson import ObjectId
@@ -40,10 +40,11 @@ class FileInDB(FileBase):
     processed: bool = Field(default=False)
     contacts_count: Optional[int] = Field(None, description="Number of contacts extracted")
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
 
 class FileResponse(FileBase):
     id: str
@@ -53,5 +54,6 @@ class FileResponse(FileBase):
     processed: bool
     contacts_count: Optional[int]
 
-    class Config:
-        json_encoders = {ObjectId: str} 
+    model_config = ConfigDict(
+        json_encoders={ObjectId: str}
+    ) 

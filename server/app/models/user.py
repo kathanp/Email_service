@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 from bson import ObjectId
@@ -24,7 +24,7 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
-    role: str = Field(default="user", regex="^(admin|user)$")
+    role: str = Field(default="user", pattern="^(admin|user)$")
 
 class UserCreate(UserBase):
     password: Optional[str] = None  # Made optional for Google OAuth users
@@ -66,10 +66,11 @@ class UserInDB(UserBase):
     # AWS SES sender email (user's email for sending)
     sender_email: Optional[str] = None
 
-    class Config:
-        allow_population_by_field_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
 
 class User(UserBase):
     id: str
@@ -83,9 +84,10 @@ class User(UserBase):
     # AWS SES sender email (user's email for sending)
     sender_email: Optional[str] = None
 
-    class Config:
-        allow_population_by_field_name = True
-        json_encoders = {ObjectId: str}
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_encoders={ObjectId: str}
+    )
 
 class UserResponse(BaseModel):
     id: str
@@ -103,8 +105,9 @@ class UserResponse(BaseModel):
     # AWS SES sender email (user's email for sending)
     sender_email: Optional[str] = None
 
-    class Config:
-        json_encoders = {ObjectId: str}
+    model_config = ConfigDict(
+        json_encoders={ObjectId: str}
+    )
 
 class Token(BaseModel):
     access_token: str

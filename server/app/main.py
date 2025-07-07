@@ -5,6 +5,7 @@ from .api.v1 import campaigns, google_auth, subscriptions
 from .core.config import settings
 from .db.mongodb import MongoDB
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,15 +36,23 @@ app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"]
 app.include_router(google_auth.router, prefix="/api/v1/google-auth", tags=["Google OAuth"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])
 
+# Global variable to track database connection status
+db_connected = False
+
 @app.on_event("startup")
 async def startup_db_client():
     """Connect to MongoDB on startup."""
+    global db_connected
     try:
         await MongoDB.connect_to_mongo()
         logger.info("Connected to MongoDB Atlas")
+        db_connected = True
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
-        raise
+        logger.warning("Running in development mode without database connection")
+        logger.warning("Authentication and data persistence features will not work")
+        db_connected = False
+        # Don't raise the exception - allow the app to start without database
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
@@ -60,13 +69,18 @@ async def root():
     return {
         "message": "Email Bot API",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "database": "connected" if db_connected else "disconnected (development mode)"
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "database": "connected"}
+    return {
+        "status": "healthy", 
+        "database": "connected" if db_connected else "disconnected",
+        "mode": "development" if not db_connected else "production"
+    }
 
 if __name__ == "__main__":
     import uvicorn
