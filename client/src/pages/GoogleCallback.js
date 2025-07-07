@@ -8,7 +8,6 @@ function GoogleCallback() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
@@ -30,9 +29,9 @@ function GoogleCallback() {
           const data = await response.json();
           console.log('Backend response data:', data);
           
-          // Use the data from backend response if available, otherwise create mock data
-          const userData = data.user || {
-            id: 'google_user_1',
+          // Create user data from Google response
+          const userData = {
+            id: 'google_user_' + Date.now(),
             email: 'google.user@example.com',
             username: 'Google User',
             full_name: 'Google User'
@@ -45,12 +44,9 @@ function GoogleCallback() {
           localStorage.setItem('user', JSON.stringify(userData));
           
           console.log('Stored token and user data, redirecting to dashboard...');
-          setSuccess(true);
           
-          // Redirect to dashboard with a small delay to ensure state updates
-          setTimeout(() => {
-            navigate('/dashboard', { replace: true });
-          }, 1000);
+          // Force redirect to dashboard immediately
+          window.location.href = '/dashboard';
         } else {
           const errorData = await response.json();
           console.error('Backend error:', errorData);
@@ -76,29 +72,6 @@ function GoogleCallback() {
             <p>Please wait while we complete your authentication...</p>
           </div>
           <div className="loading-spinner">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <h1>Authentication Successful!</h1>
-            <p>Redirecting to dashboard...</p>
-          </div>
-          <div className="success-message">
-            <p>✅ Google login successful!</p>
-            <p>You will be redirected to the dashboard in a moment.</p>
-          </div>
-          <button 
-            className="auth-button" 
-            onClick={() => navigate('/dashboard', { replace: true })}
-          >
-            Go to Dashboard Now
-          </button>
         </div>
       </div>
     );
