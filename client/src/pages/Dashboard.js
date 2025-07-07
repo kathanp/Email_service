@@ -40,9 +40,9 @@ function Dashboard() {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       
-      // Clean up URL parameters immediately
-      console.log('Cleaning up URL parameters...');
-      window.history.replaceState({}, document.title, '/dashboard');
+      // Force URL cleanup immediately
+      console.log('Forcing URL cleanup...');
+      window.location.replace('/dashboard');
       
       console.log('Authentication data stored, user logged in');
     } else {
@@ -54,17 +54,7 @@ function Dashboard() {
     }
   }, [searchParams]); // Include searchParams in dependency array
 
-  // Additional effect to ensure URL cleanup
-  useEffect(() => {
-    const currentUrl = window.location.href;
-    console.log('Current URL:', currentUrl);
-    
-    // If URL still has parameters, clean them up
-    if (currentUrl.includes('auth_token') || currentUrl.includes('uid')) {
-      console.log('URL still has parameters, cleaning up...');
-      window.history.replaceState({}, document.title, '/dashboard');
-    }
-  }, []); // Run once on mount
+  // Remove the additional effect since we're using window.location.replace()
 
 
   // Helper function to get user's display name
