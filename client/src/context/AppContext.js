@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiRequest } from '../services/authService';
 
 const AppContext = createContext();
@@ -25,6 +25,7 @@ export const AppProvider = ({ children }) => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [recentCampaigns, setRecentCampaigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isInitialMount = useRef(true);
 
   // Fetch templates
   const fetchTemplates = useCallback(async () => {
@@ -115,7 +116,7 @@ export const AppProvider = ({ children }) => {
 
       if (response && response.ok) {
         const newTemplate = await response.json();
-        setTemplates([newTemplate, ...templates]);
+        setTemplates(prevTemplates => [newTemplate, ...prevTemplates]);
         return { success: true, template: newTemplate };
       } else if (response) {
         const errorData = await response.json();
@@ -124,7 +125,7 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       return { success: false, error: 'Network error' };
     }
-  }, [templates]);
+  }, []);
 
   const deleteTemplate = useCallback(async (templateId) => {
     try {
@@ -133,7 +134,7 @@ export const AppProvider = ({ children }) => {
       });
 
       if (response && response.ok) {
-        setTemplates(templates.filter(template => template.id !== templateId));
+        setTemplates(prevTemplates => prevTemplates.filter(template => template.id !== templateId));
         return { success: true };
       } else {
         return { success: false, error: 'Failed to delete template' };
@@ -141,7 +142,7 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       return { success: false, error: 'Network error' };
     }
-  }, [templates]);
+  }, []);
 
   const setTemplateAsDefault = useCallback(async (template) => {
     try {
@@ -150,7 +151,7 @@ export const AppProvider = ({ children }) => {
       });
 
       if (response && response.ok) {
-        setTemplates(templates.map(t => ({
+        setTemplates(prevTemplates => prevTemplates.map(t => ({
           ...t,
           is_default: t.id === template.id ? true : false
         })));
@@ -162,14 +163,18 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       return { success: false, error: 'Network error' };
     }
-  }, [templates]);
+  }, []);
 
-  // Initialize data on mount
+  // Initialize data on mount only
   useEffect(() => {
-    refreshAllData();
-  }, [refreshAllData]);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      refreshAllData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array - only runs once on mount
 
-  const value = {
+  const value = useMemo(() => ({
     templates,
     stats,
     recentActivity,
@@ -183,7 +188,21 @@ export const AppProvider = ({ children }) => {
     fetchStats,
     fetchRecentActivity,
     fetchRecentCampaigns
-  };
+  }), [
+    templates,
+    stats,
+    recentActivity,
+    recentCampaigns,
+    isLoading,
+    refreshAllData,
+    createTemplate,
+    deleteTemplate,
+    setTemplateAsDefault,
+    fetchTemplates,
+    fetchStats,
+    fetchRecentActivity,
+    fetchRecentCampaigns
+  ]);
 
   return (
     <AppContext.Provider value={value}>

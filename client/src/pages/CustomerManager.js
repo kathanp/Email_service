@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './CustomerManager.css';
 
 function AutonomousCampaign() {
@@ -17,7 +17,7 @@ function AutonomousCampaign() {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [campaignStatus, setCampaignStatus] = useState(null);
   const [showLiveStatus, setShowLiveStatus] = useState(false);
-  const [statusInterval, setStatusInterval] = useState(null);
+  const statusIntervalRef = useRef(null);
   const [recentCampaigns, setRecentCampaigns] = useState([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'tile'
@@ -30,11 +30,11 @@ function AutonomousCampaign() {
     
     // Cleanup function to stop polling when component unmounts
     return () => {
-      if (statusInterval) {
-        clearInterval(statusInterval);
+      if (statusIntervalRef.current) {
+        clearInterval(statusIntervalRef.current);
       }
     };
-  }, [statusInterval]); // Add statusInterval to dependency array
+  }, []); // Empty dependency array to run only once on mount
 
   const fetchFiles = async () => {
     try {
@@ -282,7 +282,7 @@ function AutonomousCampaign() {
           // Stop polling if campaign is completed
           if (status.status === 'completed' || status.status === 'failed') {
             clearInterval(interval);
-            setStatusInterval(null);
+            statusIntervalRef.current = null;
           }
         }
       } catch (error) {
@@ -290,13 +290,13 @@ function AutonomousCampaign() {
       }
     }, 2000); // Poll every 2 seconds
 
-    setStatusInterval(interval);
+    statusIntervalRef.current = interval;
   };
 
   const stopLiveStatusPolling = () => {
-    if (statusInterval) {
-      clearInterval(statusInterval);
-      setStatusInterval(null);
+    if (statusIntervalRef.current) {
+      clearInterval(statusIntervalRef.current);
+      statusIntervalRef.current = null;
     }
     setShowLiveStatus(false);
     setCampaignStatus(null);

@@ -3,11 +3,48 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ..services.auth_service import AuthService
 from ..core.security import verify_token
 from ..models.user import UserResponse
+from ..db.mongodb import MongoDB
+from datetime import datetime
+import logging
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
+
+def _is_development_mode():
+    """Check if we're in development mode without database."""
+    try:
+        MongoDB.get_collection("users")
+        return False
+    except:
+        return True
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserResponse:
     """Get current authenticated user."""
+    # Check if we're in development mode
+    if _is_development_mode():
+        logger.info("Development mode: Returning mock user")
+        return UserResponse(
+            id="dev_user_id",
+            email="dev@example.com",
+            username="devuser",
+            full_name="Development User",
+            role="user",
+            created_at=datetime.utcnow(),
+            last_login=datetime.utcnow(),
+            is_active=True,
+            google_id=None,
+            google_email=None,
+            google_name=None,
+            sender_email="dev@example.com"
+        )
+    
+    # In production mode, require credentials
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials required"
+        )
+    
     auth_service = AuthService()
     try:
         token_data = verify_token(credentials.credentials)

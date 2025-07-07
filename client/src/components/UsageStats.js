@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { API_ENDPOINTS } from '../config';
 import './UsageStats.css';
 import { Mail, MailCheck, Edit } from 'lucide-react';
 
@@ -12,6 +13,40 @@ function UsageStats() {
   const { templates } = useAppContext();
 
   useEffect(() => {
+    const fetchUsageData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Fetch current subscription and usage
+        const [subscriptionResponse, usageResponse] = await Promise.all([
+          fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/current`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }),
+          fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/usage`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+        ]);
+
+        if (subscriptionResponse.ok && usageResponse.ok) {
+          const subscription = await subscriptionResponse.json();
+          const usage = await usageResponse.json();
+          
+          setPlanData(subscription);
+          setUsageData(usage);
+        } else {
+          setError('Failed to load usage data');
+        }
+      } catch (err) {
+        setError('Network error loading usage data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchUsageData();
     
     // Listen for subscription changes
@@ -24,41 +59,9 @@ function UsageStats() {
     return () => {
       window.removeEventListener('subscriptionChanged', handleSubscriptionChange);
     };
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
-  const fetchUsageData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Fetch current subscription and usage
-      const [subscriptionResponse, usageResponse] = await Promise.all([
-        fetch('/api/v1/subscriptions/current', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }),
-        fetch('/api/v1/subscriptions/usage', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-      ]);
 
-      if (subscriptionResponse.ok && usageResponse.ok) {
-        const subscription = await subscriptionResponse.json();
-        const usage = await usageResponse.json();
-        
-        setPlanData(subscription);
-        setUsageData(usage);
-      } else {
-        setError('Failed to load usage data');
-      }
-    } catch (err) {
-      setError('Network error loading usage data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const getUsagePercentage = (used, limit) => {
     if (limit === -1) return 0; // Unlimited

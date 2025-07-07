@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Handle CORS_ORIGINS from environment variable
-        cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+        cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001")
         if isinstance(cors_origins, str):
             self.CORS_ORIGINS = [origin.strip() for origin in cors_origins.split(",")]
         else:

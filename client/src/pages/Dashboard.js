@@ -9,8 +9,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const { 
     stats, 
-    isLoading,
-    refreshAllData 
+    isLoading
   } = useAppContext();
 
   useEffect(() => {
@@ -19,10 +18,7 @@ function Dashboard() {
     if (userData) {
       setUser(JSON.parse(userData));
     }
-
-    // Refresh data when component mounts
-    refreshAllData();
-  }, [refreshAllData]);
+  }, []); // Empty dependency array to run only once on mount
 
 
 

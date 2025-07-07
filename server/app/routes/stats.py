@@ -2,16 +2,28 @@ from fastapi import APIRouter, HTTPException
 from ..db.mongodb import MongoDB
 from datetime import datetime, timedelta
 import logging
+import os
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 def _is_development_mode():
     """Check if we're in development mode without database."""
+    # Check if we're running locally without proper MongoDB credentials
+    mongodb_url = os.getenv("MONGODB_URL", "")
+    if not mongodb_url or "localhost" in mongodb_url or "127.0.0.1" in mongodb_url:
+        return True
+    
+    # Check if MongoDB client is connected
     try:
-        MongoDB.get_collection("stats")
+        database = MongoDB.get_database()
+        if not database:
+            return True
+        # Try a simple operation
+        database.command('ping')
         return False
-    except:
+    except Exception as e:
+        logger.info(f"Development mode detected: {str(e)}")
         return True
 
 @router.get("/summary")

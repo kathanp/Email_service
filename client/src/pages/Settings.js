@@ -14,6 +14,58 @@ function Settings() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Fetch all user data in parallel
+        const [userResponse, subscriptionResponse, usageResponse] = await Promise.all([
+          fetch('http://localhost:8000/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:8000/api/v1/subscriptions/current', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch('http://localhost:8000/api/v1/subscriptions/usage', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        ]);
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser(userData);
+        }
+
+        let subscriptionData = null;
+        if (subscriptionResponse.ok) {
+          subscriptionData = await subscriptionResponse.json();
+          setSubscription(subscriptionData);
+        }
+
+        if (usageResponse.ok) {
+          const usageData = await usageResponse.json();
+          setUsage(usageData);
+        }
+
+        // Fetch payment method if user has a subscription
+        if (subscriptionData && subscriptionData.stripe_subscription_id) {
+          const paymentResponse = await fetch('http://localhost:8000/api/v1/subscriptions/payment-method', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (paymentResponse.ok) {
+            const paymentData = await paymentResponse.json();
+            setPaymentMethod(paymentData);
+          }
+        }
+
+      } catch (err) {
+        console.error('Settings fetch error:', err);
+        setError('Failed to load user data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchUserData();
     
     // Add visibility change listener to refresh data when user returns to the tab
@@ -39,59 +91,9 @@ function Settings() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('subscriptionChanged', handleSubscriptionChange);
     };
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
-  const fetchUserData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Fetch all user data in parallel
-      const [userResponse, subscriptionResponse, usageResponse] = await Promise.all([
-        fetch('http://localhost:8000/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('http://localhost:8000/api/v1/subscriptions/current', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('http://localhost:8000/api/v1/subscriptions/usage', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
 
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        setUser(userData);
-      }
-
-      let subscriptionData = null;
-      if (subscriptionResponse.ok) {
-        subscriptionData = await subscriptionResponse.json();
-        setSubscription(subscriptionData);
-      }
-
-      if (usageResponse.ok) {
-        const usageData = await usageResponse.json();
-        setUsage(usageData);
-      }
-
-      // Fetch payment method if user has a subscription
-      if (subscriptionData && subscriptionData.stripe_subscription_id) {
-        const paymentResponse = await fetch('http://localhost:8000/api/v1/subscriptions/payment-method', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (paymentResponse.ok) {
-          const paymentData = await paymentResponse.json();
-          setPaymentMethod(paymentData);
-        }
-      }
-
-    } catch (err) {
-      console.error('Settings fetch error:', err);
-      setError('Failed to load user data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');

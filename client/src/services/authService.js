@@ -1,4 +1,6 @@
-const API_URL = "/api/auth";
+import { API_ENDPOINTS } from '../config';
+
+const API_URL = API_ENDPOINTS.AUTH;
 
 export async function register({ name, email, password }) {
   const res = await fetch(`${API_URL}/register`, {

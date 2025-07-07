@@ -1,9 +1,11 @@
-const API_URL = '/api';
+import { API_ENDPOINTS } from '../config';
+
+const API_BASE_URL = API_ENDPOINTS.STATS.replace('/api/stats', '');
 
 export const fetchStats = async () => {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/stats/summary`, {
+    const response = await fetch(`${API_BASE_URL}/api/stats/summary`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -39,7 +41,7 @@ export const fetchStats = async () => {
 export const fetchRecentActivity = async () => {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/stats/activity`, {
+    const response = await fetch(`${API_BASE_URL}/api/stats/activity`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -61,7 +63,7 @@ export const fetchRecentActivity = async () => {
 export const fetchRecentCampaigns = async () => {
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/stats/campaigns`, {
+    const response = await fetch(`${API_BASE_URL}/api/stats/campaigns`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
