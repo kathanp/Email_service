@@ -49,8 +49,7 @@ async def register(request: Request):
         body = await request.json()
         email = body.get("email")
         password = body.get("password")
-        username = body.get("username", "")
-        full_name = body.get("full_name", "")
+        name = body.get("name", "")
         
         if not email or not password:
             raise HTTPException(
@@ -68,17 +67,24 @@ async def register(request: Request):
         users_db[email] = {
             "id": user_id,
             "email": email,
-            "username": username,
-            "full_name": full_name,
+            "username": name,
+            "full_name": name,
             "password": password,
             "created_at": datetime.utcnow()
         }
         
+        # Create access token for the new user
+        access_token = create_access_token(data={"sub": email})
+        
         return {
-            "id": user_id,
-            "email": email,
-            "username": username,
-            "full_name": full_name,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user_id,
+                "email": email,
+                "username": name,
+                "full_name": name
+            },
             "message": "User registered successfully"
         }
         
