@@ -83,6 +83,15 @@ async def health_check():
         "mode": "development" if not db_connected else "production"
     }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.get("/test")
+async def test_endpoint():
+    """Simple test endpoint."""
+    return {
+        "message": "Backend is working!",
+        "timestamp": "2025-07-07T10:40:00Z"
+    }
+
+# Vercel handles the server, so we don't need uvicorn.run here
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
