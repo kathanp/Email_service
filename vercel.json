@@ -30,6 +30,10 @@
       "dest": "/server/main.py"
     },
     {
+      "src": "/debug",
+      "dest": "/server/main.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "/client/$1"
     }

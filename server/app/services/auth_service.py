@@ -11,31 +11,49 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     def __init__(self):
-        pass
+        logger.info("AuthService initialized")
 
     def _get_users_collection(self):
         """Get users collection."""
         try:
-            return MongoDB.get_collection("users")
+            logger.info("Getting users collection from MongoDB...")
+            collection = MongoDB.get_collection("users")
+            if collection:
+                logger.info("✅ SUCCESS: Users collection retrieved")
+            else:
+                logger.warning("⚠️  WARNING: Users collection is None")
+            return collection
         except Exception as e:
+            logger.error(f"❌ ERROR: Failed to get users collection - {e}")
             logger.warning(f"Database not available: {e}")
             return None
 
     def _is_development_mode(self):
         """Check if we're in development mode without database."""
         try:
+            logger.info("Checking if in development mode...")
             collection = self._get_users_collection()
-            return collection is None
-        except:
+            is_dev = collection is None
+            logger.info(f"Development mode: {is_dev}")
+            return is_dev
+        except Exception as e:
+            logger.error(f"❌ ERROR: Error checking development mode - {e}")
             return True
 
     async def register_user(self, user_data: UserCreate) -> UserResponse:
         """Register a new user."""
+        logger.info("=" * 30)
+        logger.info("AUTH SERVICE: register_user called")
+        logger.info("=" * 30)
+        logger.info(f"Email: {user_data.email}")
+        logger.info(f"Username: {user_data.username}")
+        logger.info(f"Full name: {user_data.full_name}")
+        
         try:
             if self._is_development_mode():
                 # Development mode - return mock response
-                logger.info("Development mode: Mock user registration")
-                return UserResponse(
+                logger.info("🔄 Development mode: Creating mock user registration")
+                mock_user = UserResponse(
                     id="dev_user_123",
                     email=user_data.email,
                     username=user_data.username,
@@ -48,24 +66,32 @@ class AuthService:
                     google_name=None,
                     sender_email=None
                 )
+                logger.info(f"✅ SUCCESS: Mock user created - ID: {mock_user.id}")
+                return mock_user
 
+            logger.info("🔄 Production mode: Creating real user in database")
             users_collection = self._get_users_collection()
             
             # Check if user already exists
+            logger.info("Checking if user already exists...")
             existing_user = await users_collection.find_one({"email": user_data.email})
             if existing_user:
+                logger.error(f"❌ ERROR: Email already registered - {user_data.email}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Email already registered"
                 )
 
             # Create new user document
+            logger.info("Creating new user document...")
             user_dict = user_data.dict()
             
             # Handle password hashing if password is provided
             if user_data.password:
+                logger.info("Hashing password...")
                 user_dict["hashed_password"] = get_password_hash(user_data.password)
             else:
+                logger.info("No password provided, setting hashed_password to None")
                 user_dict["hashed_password"] = None
             
             user_dict["created_at"] = datetime.utcnow()
@@ -77,12 +103,14 @@ class AuthService:
                 del user_dict["password"]
 
             # Insert user into database
+            logger.info("Inserting user into database...")
             result = await users_collection.insert_one(user_dict)
+            logger.info(f"User inserted with ID: {result.inserted_id}")
             
             # Get the created user
             created_user = await users_collection.find_one({"_id": result.inserted_id})
             
-            return UserResponse(
+            user_response = UserResponse(
                 id=str(created_user["_id"]),
                 email=created_user["email"],
                 username=created_user.get("username"),
@@ -95,10 +123,15 @@ class AuthService:
                 google_name=created_user.get("google_name"),
                 sender_email=created_user.get("sender_email")
             )
+            
+            logger.info(f"✅ SUCCESS: User registered successfully - ID: {user_response.id}")
+            return user_response
 
         except HTTPException:
             raise
         except Exception as e:
+            logger.error(f"❌ UNEXPECTED ERROR: Error creating user - {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error creating user: {str(e)}"
@@ -249,24 +282,40 @@ class AuthService:
 
     async def login_user(self, user_data: UserLogin) -> dict:
         """Login a user and return access token."""
+        logger.info("=" * 30)
+        logger.info("AUTH SERVICE: login_user called")
+        logger.info("=" * 30)
+        logger.info(f"Email: {user_data.email}")
+        logger.info(f"Password provided: {'Yes' if user_data.password else 'No'}")
+        
         try:
+            logger.info("Authenticating user...")
             user = await self.authenticate_user(user_data.email, user_data.password)
             if not user:
+                logger.error(f"❌ ERROR: Authentication failed for email: {user_data.email}")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Incorrect email or password"
                 )
 
+            logger.info(f"✅ SUCCESS: User authenticated - ID: {user.id}")
+
             # Update last login (only if database is available)
             if not self._is_development_mode():
+                logger.info("Updating last login timestamp...")
                 users_collection = self._get_users_collection()
                 await users_collection.update_one(
                     {"_id": user.id},
                     {"$set": {"last_login": datetime.utcnow()}}
                 )
+                logger.info("✅ SUCCESS: Last login updated")
+            else:
+                logger.info("🔄 Development mode: Skipping last login update")
 
             # Create access token
+            logger.info("Creating access token...")
             access_token = create_access_token(data={"sub": user.email})
+            logger.info(f"✅ SUCCESS: Access token created - Length: {len(access_token)}")
             
             # Create user response
             user_response = UserResponse(
@@ -280,6 +329,7 @@ class AuthService:
                 is_active=user.is_active
             )
 
+            logger.info(f"✅ SUCCESS: Login completed successfully - User ID: {user.id}")
             return {
                 "access_token": access_token,
                 "token_type": "bearer",
@@ -289,6 +339,8 @@ class AuthService:
         except HTTPException:
             raise
         except Exception as e:
+            logger.error(f"❌ UNEXPECTED ERROR: Error during login - {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error during login: {str(e)}"
