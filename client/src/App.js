@@ -14,20 +14,27 @@ import SubscriptionSummary from './pages/SubscriptionSummary';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 
-// Component to redirect based on authentication status
-function HomeRedirect() {
-  const token = localStorage.getItem('token');
-  return token ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
-}
+// Component to handle root path - show auth page for guests, redirect to dashboard for authenticated users
+const RootRoute = () => {
+  const isAuthenticated = localStorage.getItem("token");
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthPage />;
+};
 
 function App() {
   return (
     <AppProvider>
       <Router>
         <Routes>
+          {/* Root path - shows auth page for guests, redirects to dashboard for authenticated users */}
+          <Route path="/" element={<RootRoute />} />
+          
+          {/* Auth routes */}
           <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
           <Route path="/auth/callback" element={<GoogleCallback />} />
+          <Route path="/google-login-success" element={<AuthPage />} />
+          
+          {/* Protected routes - require authentication */}
           <Route 
             path="/dashboard" 
             element={
@@ -118,8 +125,9 @@ function App() {
               </PrivateRoute>
             } 
           />
-          <Route path="/google-login-success" element={<AuthPage />} />
-          <Route path="/" element={<HomeRedirect />} />
+          
+          {/* Catch all - redirect to root */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AppProvider>
