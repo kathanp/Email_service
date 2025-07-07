@@ -19,7 +19,21 @@ function UsageStats() {
         
         // Don't make API calls if no token (user not authenticated)
         if (!token) {
-          setError('Please log in to view usage data');
+          // Use development endpoints for mock data
+          const [subscriptionResponse, usageResponse] = await Promise.all([
+            fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/current/dev`),
+            fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/usage/dev`)
+          ]);
+
+          if (subscriptionResponse.ok && usageResponse.ok) {
+            const subscription = await subscriptionResponse.json();
+            const usage = await usageResponse.json();
+            
+            setPlanData(subscription);
+            setUsageData(usage);
+          } else {
+            setError('Failed to load development data');
+          }
           setIsLoading(false);
           return;
         }

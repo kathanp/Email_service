@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
+import os
 
 from ..deps import get_current_user
 from ...models.user import UserResponse
 from ...models.subscription import (
     SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse, 
     SubscriptionPlan, BillingCycle, PaymentStatus, UsageStats, BillingInfo,
-    SUBSCRIPTION_PLANS
+    SUBSCRIPTION_PLANS, SubscriptionFeatures
 )
 from ...services.stripe_service import stripe_service
 from ...services.mock_subscription_service import mock_subscription_service
@@ -17,6 +18,19 @@ from ...db.mongodb import MongoDB
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+def _is_development_mode():
+    mongodb_url = os.getenv("MONGODB_URL", "")
+    if not mongodb_url or "localhost" in mongodb_url or "127.0.0.1" in mongodb_url:
+        return True
+    try:
+        database = MongoDB.get_database()
+        if not database:
+            return True
+        database.command('ping')
+        return False
+    except Exception:
+        return True
 
 @router.get("/plans", response_model=List[dict])
 async def get_subscription_plans():
@@ -86,6 +100,33 @@ async def get_current_subscription(current_user: UserResponse = Depends(get_curr
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch subscription"
         )
+
+@router.get("/current/dev", response_model=SubscriptionResponse)
+async def get_current_subscription_dev():
+    """Development mode: Get mock current subscription (no auth required)."""
+    if not _is_development_mode():
+        raise HTTPException(status_code=404, detail="Development endpoint not available in production")
+    return SubscriptionResponse(
+        id="dev_user_id",
+        user_id="dev_user_id",
+        plan=SubscriptionPlan.PROFESSIONAL,
+        billing_cycle=BillingCycle.MONTHLY,
+        status=PaymentStatus.ACTIVE,
+        current_period_start=datetime.utcnow() - timedelta(days=10),
+        current_period_end=datetime.utcnow() + timedelta(days=20),
+        cancel_at_period_end=False,
+        stripe_subscription_id=None,
+        features=SubscriptionFeatures(
+            email_limit=10000,
+            sender_limit=10,
+            template_limit=20
+        ),
+        usage={
+            "emails_sent_this_month": 2500,
+            "senders_used": 2,
+            "templates_used": 5
+        }
+    )
 
 @router.post("/create", response_model=SubscriptionResponse)
 async def create_subscription(
@@ -357,6 +398,19 @@ async def get_usage_stats(current_user: UserResponse = Depends(get_current_user)
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch usage statistics"
         )
+
+@router.get("/usage/dev", response_model=UsageStats)
+async def get_usage_stats_dev():
+    """Development mode: Get mock usage stats (no auth required)."""
+    if not _is_development_mode():
+        raise HTTPException(status_code=404, detail="Development endpoint not available in production")
+    return UsageStats(
+        emails_sent_this_month=2500,
+        emails_sent_total=12000,
+        senders_used=2,
+        templates_created=5,
+        campaigns_created=3
+    )
 
 @router.get("/billing", response_model=BillingInfo)
 async def get_billing_info(current_user: UserResponse = Depends(get_current_user)):
