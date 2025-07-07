@@ -57,7 +57,6 @@ function Pricing() {
   };
 
   const handleSubscribe = async (plan) => {
-    setSelectedPlan(plan);
     setError('');
     
     try {
@@ -90,11 +89,6 @@ function Pricing() {
     } catch (error) {
       setError('Network error creating subscription');
     }
-  };
-
-  const getCurrentPlan = () => {
-    if (!currentSubscription) return null;
-    return plans.find(plan => plan.id === currentSubscription.plan);
   };
 
   const isCurrentPlan = (plan) => {
