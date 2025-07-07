@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { FaUpload, FaFileExcel, FaFilePdf, FaTrash, FaCog, FaEye } from 'react-icons/fa';
+import { API_ENDPOINTS } from '../config';
 import './FileManager.css';
 
-const FileManager = () => {
+function FileManager() {
   const [files, setFiles] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     fetchFiles();
@@ -19,161 +18,120 @@ const FileManager = () => {
 
   const fetchFiles = async () => {
     try {
-      setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/files/', {
+      const response = await fetch(`${API_ENDPOINTS.FILES}/`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Authorization': `Bearer ${token}`
+        }
       });
-
+      
       if (response.ok) {
         const data = await response.json();
         setFiles(data);
       } else {
-        setError('Failed to fetch files');
+        setError('Failed to load files');
       }
     } catch (error) {
-      setError('Error fetching files');
-      console.error('Error:', error);
+      setError('Network error loading files');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = ['.xlsx', '.xls', '.pdf'];
-      const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-      
-      if (!allowedTypes.includes(fileExtension)) {
-        setError('Please select a valid file type (Excel or PDF)');
-        return;
-      }
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-      // Validate file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size must be less than 10MB');
-        return;
-      }
+    setUploading(true);
+    setError('');
+    setSuccess('');
 
-      setSelectedFile(file);
-      setError('');
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      setError('Please select a file to upload');
-      return;
-    }
+    const formData = new FormData();
+    formData.append('file', file);
 
     try {
-      setUploading(true);
-      setError('');
-
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      if (description) {
-        formData.append('description', description);
-      }
-
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/files/upload', {
+      const response = await fetch(`${API_ENDPOINTS.FILES}/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`
         },
-        body: formData,
+        body: formData
       });
 
       if (response.ok) {
-        const uploadedFile = await response.json();
-        setFiles([uploadedFile, ...files]);
-        setSelectedFile(null);
-        setDescription('');
-        setError('');
-        // Reset file input
-        document.getElementById('file-input').value = '';
+        const data = await response.json();
+        setFiles(prev => [data, ...prev]);
+        setSuccess('File uploaded successfully!');
+        e.target.value = ''; // Clear the input
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Upload failed');
+        setError(errorData.detail || 'Failed to upload file');
       }
     } catch (error) {
-      setError('Error uploading file');
-      console.error('Error:', error);
+      setError('Network error uploading file');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDelete = async (fileId) => {
+  const handleDeleteFile = async (fileId) => {
     if (!window.confirm('Are you sure you want to delete this file?')) {
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/files/${fileId}`, {
+      const response = await fetch(`${API_ENDPOINTS.FILES}/${fileId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
-        setFiles(files.filter(file => file.id !== fileId));
+        setFiles(prev => prev.filter(file => file.id !== fileId));
+        setSuccess('File deleted successfully!');
       } else {
-        setError('Failed to delete file');
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to delete file');
       }
     } catch (error) {
-      setError('Error deleting file');
-      console.error('Error:', error);
+      setError('Network error deleting file');
     }
   };
 
-  const handleProcess = async (fileId) => {
+  const handleProcessFile = async (fileId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/files/${fileId}/process`, {
+      const response = await fetch(`${API_ENDPOINTS.FILES}/${fileId}/process`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
-        const result = await response.json();
-        // Update the file in the list with processed status
-        setFiles(files.map(file => 
-          file.id === fileId 
-            ? { ...file, processed: true, contacts_count: result.contacts_count }
-            : file
-        ));
-        alert(`File processed successfully! Found ${result.contacts_count} contacts.`);
+        const data = await response.json();
+        setSuccess(`File processed successfully! Found ${data.total_contacts} contacts.`);
+        // Refresh files to get updated status
+        fetchFiles();
       } else {
-        setError('Failed to process file');
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to process file');
       }
     } catch (error) {
-      setError('Error processing file');
-      console.error('Error:', error);
+      setError('Network error processing file');
     }
   };
 
-  const handlePreview = async (fileId) => {
+  const handlePreviewFile = async (fileId) => {
     try {
-      setPreviewLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/files/${fileId}/preview`, {
+      const response = await fetch(`${API_ENDPOINTS.FILES}/${fileId}/preview`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
@@ -181,13 +139,11 @@ const FileManager = () => {
         setPreviewData(data);
         setShowPreview(true);
       } else {
-        setError('Failed to load preview data');
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to preview file');
       }
     } catch (error) {
-      setError('Error loading preview data');
-      console.error('Error:', error);
-    } finally {
-      setPreviewLoading(false);
+      setError('Network error previewing file');
     }
   };
 
@@ -196,167 +152,108 @@ const FileManager = () => {
     setPreviewData(null);
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getFileIcon = (fileType) => {
-    switch (fileType) {
-      case 'excel':
-        return <FaFileExcel className="file-icon excel" />;
-      case 'pdf':
-        return <FaFilePdf className="file-icon pdf" />;
+  const getFileStatusColor = (status) => {
+    switch (status) {
+      case 'processed':
+        return 'green';
+      case 'processing':
+        return 'orange';
+      case 'error':
+        return 'red';
       default:
-        return <FaFileExcel className="file-icon" />;
+        return 'gray';
     }
   };
 
   if (loading) {
     return (
-      <div className="file-manager">
+      <div className="file-manager-container">
         <div className="loading">Loading files...</div>
       </div>
     );
   }
 
   return (
-    <div className="file-manager-wrapper">
-      <div className="file-manager">
-        <div className="file-manager-header">
-          <h1>File Manager</h1>
-          <p>Upload and manage your contact files</p>
-        </div>
+    <div className="file-manager-container">
+      <div className="file-manager-header">
+        <h1>File Manager</h1>
+        <p>Upload and manage your contact lists</p>
+      </div>
 
-      {/* Upload Section */}
-      <div className="upload-section">
-        <div className="upload-card">
-          <div className="upload-area">
-            <FaUpload className="upload-icon" />
-            <h3>Upload Contact File</h3>
-            <p>Supported formats: Excel (.xlsx, .xls) and PDF (.pdf)</p>
-            <p>Maximum file size: 10MB</p>
-            
-            <div className="file-input-container">
-              <input
-                id="file-input"
-                type="file"
-                accept=".xlsx,.xls,.pdf"
-                onChange={handleFileSelect}
-                className="file-input"
-              />
-              <label htmlFor="file-input" className="file-input-label">
-                Choose File
-              </label>
-            </div>
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
 
-            {selectedFile && (
-              <div className="selected-file">
-                <p>Selected: {selectedFile.name}</p>
-                <p>Size: {formatFileSize(selectedFile.size)}</p>
-              </div>
-            )}
-
-            <div className="description-input">
-              <input
-                type="text"
-                placeholder="File description (optional)"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="description-field"
-              />
-            </div>
-
-            {error && <div className="error-message">{error}</div>}
-
-            <button
-              onClick={handleUpload}
-              disabled={!selectedFile || uploading}
-              className="upload-button"
-            >
-              {uploading ? 'Uploading...' : 'Upload File'}
-            </button>
-          </div>
+      {/* File Upload */}
+      <div className="file-upload-section">
+        <h2>Upload New File</h2>
+        <div className="upload-area">
+          <input
+            type="file"
+            id="file-upload"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            style={{ display: 'none' }}
+          />
+          <label htmlFor="file-upload" className="upload-button">
+            {uploading ? 'Uploading...' : 'Choose File'}
+          </label>
+          <p className="upload-hint">
+            Supported formats: Excel (.xlsx, .xls), CSV (.csv)
+          </p>
         </div>
       </div>
 
       {/* Files List */}
-      <div className="files-section">
+      <div className="files-list">
         <h2>Your Files</h2>
         {files.length === 0 ? (
           <div className="no-files">
-            <p>No files uploaded yet. Upload your first contact file to get started.</p>
+            <p>No files uploaded yet. Upload your first file above.</p>
           </div>
         ) : (
           <div className="files-grid">
             {files.map((file) => (
               <div key={file.id} className="file-card">
-                <div className="file-header">
-                  {getFileIcon(file.file_type)}
-                  <div className="file-info">
-                    <h4>{file.filename}</h4>
-                    <p className="file-meta">
-                      {formatFileSize(file.file_size)} • {file.file_type.toUpperCase()}
-                    </p>
+                <div className="file-info">
+                  <h3>{file.filename}</h3>
+                  <p className="file-size">{file.size} bytes</p>
+                  <p className="file-uploaded">
+                    Uploaded: {new Date(file.uploaded_at).toLocaleDateString()}
+                  </p>
+                  <div className="file-status">
+                    <span 
+                      className={`status-badge status-${getFileStatusColor(file.status)}`}
+                    >
+                      {file.status}
+                    </span>
+                    {file.total_contacts && (
+                      <span className="contacts-count">
+                        {file.total_contacts} contacts
+                      </span>
+                    )}
                   </div>
                 </div>
-
-                {file.description && (
-                  <p className="file-description">{file.description}</p>
-                )}
-
-                <div className="file-details">
-                  <p>Uploaded: {formatDate(file.upload_date)}</p>
-                  {file.contacts_count !== null && (
-                    <p>Contacts: {file.contacts_count}</p>
-                  )}
-                </div>
-
-                <div className="file-status">
-                  <span className={`status-badge ${file.processed ? 'processed' : 'pending'}`}>
-                    {file.processed ? 'Processed' : 'Pending'}
-                  </span>
-                </div>
-
                 <div className="file-actions">
-                  {file.processed && (
+                  {file.status === 'uploaded' && (
                     <button
-                      onClick={() => handlePreview(file.id)}
-                      className="action-button preview"
-                      title="Preview file data"
-                      disabled={previewLoading}
+                      onClick={() => handleProcessFile(file.id)}
+                      className="btn-secondary"
                     >
-                      <FaEye /> {previewLoading ? 'Loading...' : 'Preview'}
-                    </button>
-                  )}
-                  {!file.processed && (
-                    <button
-                      onClick={() => handleProcess(file.id)}
-                      className="action-button process"
-                      title="Process file to extract contacts"
-                    >
-                      <FaCog /> Process
+                      Process
                     </button>
                   )}
                   <button
-                    onClick={() => handleDelete(file.id)}
-                    className="action-button delete"
-                    title="Delete file"
+                    onClick={() => handlePreviewFile(file.id)}
+                    className="btn-secondary"
                   >
-                    <FaTrash /> Delete
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFile(file.id)}
+                    className="btn-danger"
+                  >
+                    Delete
                   </button>
                 </div>
               </div>
@@ -366,50 +263,44 @@ const FileManager = () => {
       </div>
 
       {/* Preview Modal */}
-      {showPreview && (
-        <div className="preview-modal-overlay" onClick={closePreview}>
-          <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="preview-modal-header">
-              <h3>File Data Preview</h3>
+      {showPreview && previewData && (
+        <div className="preview-modal">
+          <div className="preview-content">
+            <div className="preview-header">
+              <h3>File Preview</h3>
               <button onClick={closePreview} className="close-button">×</button>
             </div>
-            <div className="preview-modal-content">
-              {previewData && previewData.contacts && previewData.contacts.length > 0 ? (
-                <div className="preview-table-container">
-                  <p className="preview-info">
-                    Showing {previewData.contacts.length} contacts from the file
-                  </p>
-                  <table className="preview-table">
-                    <thead>
-                      <tr>
-                        {Object.keys(previewData.contacts[0]).map((header) => (
-                          <th key={header}>{header}</th>
+            <div className="preview-body">
+              <div className="preview-info">
+                <p><strong>Total Contacts:</strong> {previewData.total_contacts}</p>
+                <p><strong>Columns:</strong> {previewData.columns.join(', ')}</p>
+              </div>
+              <div className="preview-table">
+                <table>
+                  <thead>
+                    <tr>
+                      {previewData.columns.map((column, index) => (
+                        <th key={index}>{column}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.sample_data.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {previewData.columns.map((column, colIndex) => (
+                          <td key={colIndex}>{row[column] || ''}</td>
                         ))}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {previewData.contacts.map((contact, index) => (
-                        <tr key={index}>
-                          {Object.values(contact).map((value, valueIndex) => (
-                            <td key={valueIndex}>{value || '-'}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="no-preview-data">
-                  <p>No data available for preview</p>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       )}
     </div>
-    </div>
   );
-};
+}
 
 export default FileManager; 

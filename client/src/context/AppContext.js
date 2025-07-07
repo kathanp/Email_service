@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { apiRequest } from '../services/authService';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config';
 
 const AppContext = createContext();
 
@@ -12,202 +12,228 @@ export const useAppContext = () => {
 };
 
 export const AppProvider = ({ children }) => {
-  const [templates, setTemplates] = useState([]);
   const [stats, setStats] = useState({
+    totalEmails: 0,
+    totalCampaigns: 0,
+    totalTemplates: 0,
     totalCustomers: 0,
-    scheduledEmails: 0,
-    sentToday: 0,
-    totalSent: 0,
-    thisWeekSent: 0,
-    monthChange: 0,
-    todayChange: 0
+    totalSenders: 0,
+    emailsSentToday: 0,
+    emailsSentThisMonth: 0,
+    successRate: 0,
+    recentActivity: [],
+    campaignStats: []
   });
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [recentCampaigns, setRecentCampaigns] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const isInitialMount = useRef(true);
 
-  // Fetch templates
-  const fetchTemplates = useCallback(async () => {
-    try {
-      // Use development endpoint that doesn't require authentication
-      const response = await apiRequest('http://localhost:8000/api/templates/dev');
-      if (response && response.ok) {
-        const data = await response.json();
-        setTemplates(data);
-      } else {
-        console.warn('Templates endpoint not available, using empty array');
-        setTemplates([]);
-      }
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-      setTemplates([]);
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const apiRequest = async (url, options = {}) => {
+    const token = localStorage.getItem('token');
+    const config = {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    };
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-  }, []);
 
-  // Fetch dashboard stats
-  const fetchStats = useCallback(async () => {
     try {
-      const response = await apiRequest('http://localhost:8000/api/stats/summary');
-      if (response && response.ok) {
+      const response = await fetch(url, config);
+      return response;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await apiRequest(`${API_ENDPOINTS.STATS}/summary`);
+      if (response.ok) {
         const data = await response.json();
-        setStats({
+        setStats(prevStats => ({
+          ...prevStats,
+          totalEmails: data.totalEmails || 0,
+          totalCampaigns: data.totalCampaigns || 0,
+          totalTemplates: data.totalTemplates || 0,
           totalCustomers: data.totalCustomers || 0,
-          scheduledEmails: data.scheduledEmails || 0,
-          sentToday: data.sentToday || 0,
-          totalSent: data.totalSent || 0,
-          thisWeekSent: data.thisWeekSent || 0,
-          monthChange: data.monthChange || 0,
-          todayChange: data.todayChange || 0
-        });
+          totalSenders: data.totalSenders || 0,
+          emailsSentToday: data.emailsSentToday || 0,
+          emailsSentThisMonth: data.emailsSentThisMonth || 0,
+          successRate: data.successRate || 0
+        }));
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  }, []);
+  };
 
-  // Fetch recent activity
-  const fetchRecentActivity = useCallback(async () => {
+  const fetchActivity = async () => {
     try {
-      const response = await apiRequest('http://localhost:8000/api/stats/activity');
-      if (response && response.ok) {
+      const response = await apiRequest(`${API_ENDPOINTS.STATS}/activity`);
+      if (response.ok) {
         const data = await response.json();
-        const formattedActivity = data.map((activity, index) => ({
-          id: index + 1,
-          type: activity.type,
-          message: activity.message,
-          time: new Date(activity.time).toLocaleString(),
-          status: activity.status
+        setStats(prevStats => ({
+          ...prevStats,
+          recentActivity: data.recentActivity || []
         }));
-        setRecentActivity(formattedActivity);
       }
     } catch (error) {
       console.error('Error fetching activity:', error);
     }
-  }, []);
+  };
 
-  // Fetch recent campaigns
-  const fetchRecentCampaigns = useCallback(async () => {
+  const fetchCampaignStats = async () => {
     try {
-      const response = await apiRequest('http://localhost:8000/api/stats/campaigns');
-      if (response && response.ok) {
+      const response = await apiRequest(`${API_ENDPOINTS.STATS}/campaigns`);
+      if (response.ok) {
         const data = await response.json();
-        setRecentCampaigns(data.slice(0, 5));
+        setStats(prevStats => ({
+          ...prevStats,
+          campaignStats: data.campaignStats || []
+        }));
       }
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
+      console.error('Error fetching campaign stats:', error);
     }
-  }, []);
+  };
 
-  // Refresh all data
-  const refreshAllData = useCallback(async () => {
-    setIsLoading(true);
-    await Promise.all([
-      fetchTemplates(),
-      fetchStats(),
-      fetchRecentActivity(),
-      fetchRecentCampaigns()
-    ]);
-    setIsLoading(false);
-  }, [fetchTemplates, fetchStats, fetchRecentActivity, fetchRecentCampaigns]);
-
-  // Template operations
-  const createTemplate = useCallback(async (templateData) => {
+  const fetchTemplates = async () => {
     try {
-      const response = await apiRequest('http://localhost:8000/api/templates/', {
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/`);
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data);
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const createTemplate = async (templateData) => {
+    try {
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/`, {
         method: 'POST',
         body: JSON.stringify(templateData)
       });
-
-      if (response && response.ok) {
+      
+      if (response.ok) {
         const newTemplate = await response.json();
-        setTemplates(prevTemplates => [newTemplate, ...prevTemplates]);
+        setTemplates(prev => [...prev, newTemplate]);
         return { success: true, template: newTemplate };
-      } else if (response) {
-        const errorData = await response.json();
-        return { success: false, error: errorData.detail };
-      }
-    } catch (error) {
-      return { success: false, error: 'Network error' };
-    }
-  }, []);
-
-  const deleteTemplate = useCallback(async (templateId) => {
-    try {
-      const response = await apiRequest(`http://localhost:8000/api/templates/${templateId}`, {
-        method: 'DELETE'
-      });
-
-      if (response && response.ok) {
-        setTemplates(prevTemplates => prevTemplates.filter(template => template.id !== templateId));
-        return { success: true };
       } else {
-        return { success: false, error: 'Failed to delete template' };
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail || 'Failed to create template' };
       }
     } catch (error) {
+      console.error('Error creating template:', error);
       return { success: false, error: 'Network error' };
     }
-  }, []);
+  };
 
-  const setTemplateAsDefault = useCallback(async (template) => {
+  const updateTemplate = async (templateId, templateData) => {
     try {
-      const response = await apiRequest(`http://localhost:8000/api/templates/${template.id}/set-default`, {
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}`, {
+        method: 'PUT',
+        body: JSON.stringify(templateData)
+      });
+      
+      if (response.ok) {
+        const updatedTemplate = await response.json();
+        setTemplates(prev => prev.map(t => t.id === templateId ? updatedTemplate : t));
+        return { success: true, template: updatedTemplate };
+      } else {
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail || 'Failed to update template' };
+      }
+    } catch (error) {
+      console.error('Error updating template:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  const setDefaultTemplate = async (templateId) => {
+    try {
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}/set-default`, {
         method: 'POST'
       });
-
-      if (response && response.ok) {
-        setTemplates(prevTemplates => prevTemplates.map(t => ({
+      
+      if (response.ok) {
+        const updatedTemplate = await response.json();
+        setTemplates(prev => prev.map(t => ({
           ...t,
-          is_default: t.id === template.id ? true : false
+          is_default: t.id === templateId
         })));
-        return { success: true };
-      } else if (response) {
+        return { success: true, template: updatedTemplate };
+      } else {
         const errorData = await response.json();
-        return { success: false, error: errorData.detail };
+        return { success: false, error: errorData.detail || 'Failed to set default template' };
       }
     } catch (error) {
+      console.error('Error setting default template:', error);
       return { success: false, error: 'Network error' };
     }
+  };
+
+  const deleteTemplate = async (templateId) => {
+    try {
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setTemplates(prev => prev.filter(t => t.id !== templateId));
+        return { success: true };
+      } else {
+        const errorData = await response.json();
+        return { success: false, error: errorData.detail || 'Failed to delete template' };
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchStats(),
+          fetchActivity(),
+          fetchCampaignStats(),
+          fetchTemplates()
+        ]);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  // Initialize data on mount only
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      refreshAllData();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only runs once on mount
-
-  const value = useMemo(() => ({
-    templates,
+  const value = {
     stats,
-    recentActivity,
-    recentCampaigns,
-    isLoading,
-    refreshAllData,
-    createTemplate,
-    deleteTemplate,
-    setTemplateAsDefault,
-    fetchTemplates,
-    fetchStats,
-    fetchRecentActivity,
-    fetchRecentCampaigns
-  }), [
     templates,
-    stats,
-    recentActivity,
-    recentCampaigns,
-    isLoading,
-    refreshAllData,
-    createTemplate,
-    deleteTemplate,
-    setTemplateAsDefault,
-    fetchTemplates,
+    loading,
+    error,
     fetchStats,
-    fetchRecentActivity,
-    fetchRecentCampaigns
-  ]);
+    fetchActivity,
+    fetchCampaignStats,
+    fetchTemplates,
+    createTemplate,
+    updateTemplate,
+    setDefaultTemplate,
+    deleteTemplate
+  };
 
   return (
     <AppContext.Provider value={value}>

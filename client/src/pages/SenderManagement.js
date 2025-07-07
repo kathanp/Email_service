@@ -1,91 +1,87 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config';
 import './SenderManagement.css';
 
 function SenderManagement() {
   const [senders, setSenders] = useState([]);
-  const [newSender, setNewSender] = useState({
-    email: '',
-    display_name: '',
-    is_default: false
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [newSender, setNewSender] = useState({ email: '', name: '' });
+  const [isAdding, setIsAdding] = useState(false);
+
+  useEffect(() => {
+    fetchSenders();
+  }, []);
 
   const fetchSenders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/senders/', {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
+      
       if (response.ok) {
         const data = await response.json();
         setSenders(data);
       } else {
         setError('Failed to load sender emails');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Network error loading sender emails');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleAddSender = async (e) => {
     e.preventDefault();
-    
-    if (!newSender.email.trim()) {
-      setError('Please enter an email address');
+    if (!newSender.email || !newSender.name) {
+      setError('Please fill in all fields');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsAdding(true);
     setError('');
     setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/senders/', {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          email: newSender.email,
-          display_name: newSender.display_name || newSender.email,
-          is_default: newSender.is_default
-        })
+        body: JSON.stringify(newSender)
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setSenders([result, ...senders]);
-        setNewSender({ email: '', display_name: '', is_default: false });
-        setSuccess(result.message);
+        const data = await response.json();
+        setSenders(prev => [...prev, data]);
+        setNewSender({ email: '', name: '' });
+        setSuccess('Sender email added successfully! Verification email sent.');
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to add sender email');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Network error adding sender email');
     } finally {
-      setIsSubmitting(false);
+      setIsAdding(false);
     }
   };
 
-  const handleDelete = async (senderId) => {
+  const handleDeleteSender = async (senderId) => {
     if (!window.confirm('Are you sure you want to delete this sender email?')) {
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/senders/${senderId}`, {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/${senderId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -93,12 +89,13 @@ function SenderManagement() {
       });
 
       if (response.ok) {
-        setSenders(senders.filter(sender => sender.id !== senderId));
+        setSenders(prev => prev.filter(sender => sender.id !== senderId));
         setSuccess('Sender email deleted successfully!');
       } else {
-        setError('Failed to delete sender email');
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to delete sender email');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Network error deleting sender email');
     }
   };
@@ -106,7 +103,7 @@ function SenderManagement() {
   const handleSetDefault = async (senderId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/senders/${senderId}/set-default`, {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/${senderId}/set-default`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -114,25 +111,24 @@ function SenderManagement() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setSenders(senders.map(sender => ({
+        setSenders(prev => prev.map(sender => ({
           ...sender,
           is_default: sender.id === senderId
         })));
-        setSuccess(result.message);
+        setSuccess('Default sender email updated successfully!');
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Failed to set default sender');
+        setError(errorData.detail || 'Failed to set default sender email');
       }
-    } catch (err) {
-      setError('Network error setting default sender');
+    } catch (error) {
+      setError('Network error setting default sender email');
     }
   };
 
   const handleResendVerification = async (senderId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/senders/${senderId}/resend-verification`, {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/${senderId}/resend-verification`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -140,185 +136,140 @@ function SenderManagement() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setSuccess(result.message);
+        setSuccess('Verification email sent successfully!');
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Failed to resend verification');
+        setError(errorData.detail || 'Failed to resend verification email');
       }
-    } catch (err) {
-      setError('Network error resending verification');
+    } catch (error) {
+      setError('Network error resending verification email');
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'verified':
-        return <span className="status-badge verified">✅ Verified</span>;
+        return 'green';
       case 'pending':
-        return <span className="status-badge pending">⏳ Pending</span>;
+        return 'orange';
       case 'failed':
-        return <span className="status-badge failed">❌ Failed</span>;
+        return 'red';
       default:
-        return <span className="status-badge unknown">❓ Unknown</span>;
+        return 'gray';
     }
   };
 
-  useEffect(() => {
-    fetchSenders();
-  }, []);
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="sender-management">
+      <div className="sender-management-container">
         <div className="loading">Loading sender emails...</div>
       </div>
     );
   }
 
   return (
-    <div className="sender-management-wrapper">
-      <div className="sender-management">
-        <div className="sender-header">
-          <h2>Sender Email Management</h2>
-          <p>Add and manage your verified sender emails for campaigns</p>
-        </div>
+    <div className="sender-management-container">
+      <div className="sender-management-header">
+        <h1>Sender Management</h1>
+        <p>Manage your verified sender emails for sending campaigns</p>
+      </div>
 
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
+      {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
 
-        <div className="sender-form-container">
-          <h3>Add New Sender Email</h3>
-          <form onSubmit={handleSubmit} className="sender-form">
+      {/* Add New Sender Form */}
+      <div className="add-sender-form">
+        <h2>Add New Sender Email</h2>
+        <form onSubmit={handleAddSender}>
+          <div className="form-row">
             <div className="form-group">
-              <label htmlFor="senderEmail">Email Address *</label>
+              <label htmlFor="senderName">Sender Name</label>
               <input
-                id="senderEmail"
-                type="email"
-                placeholder="Enter email address (e.g., ceo@mycompany.com)"
-                value={newSender.email}
-                onChange={(e) => setNewSender({...newSender, email: e.target.value})}
+                type="text"
+                id="senderName"
+                value={newSender.name}
+                onChange={(e) => setNewSender({ ...newSender, name: e.target.value })}
+                placeholder="Enter sender name"
                 required
               />
             </div>
-            
             <div className="form-group">
-              <label htmlFor="displayName">Display Name (Optional)</label>
+              <label htmlFor="senderEmail">Email Address</label>
               <input
-                id="displayName"
-                type="text"
-                placeholder="Enter display name (e.g., CEO, Marketing Team)"
-                value={newSender.display_name}
-                onChange={(e) => setNewSender({...newSender, display_name: e.target.value})}
+                type="email"
+                id="senderEmail"
+                value={newSender.email}
+                onChange={(e) => setNewSender({ ...newSender, email: e.target.value })}
+                placeholder="Enter email address"
+                required
               />
             </div>
-            
-            <div className="form-group checkbox-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={newSender.is_default}
-                  onChange={(e) => setNewSender({...newSender, is_default: e.target.checked})}
-                />
-                Set as default sender
-              </label>
-            </div>
-            
-            <button type="submit" disabled={isSubmitting} className="save-button">
-              {isSubmitting ? 'Adding...' : 'Add Sender Email'}
+            <button 
+              type="submit" 
+              className="btn-primary"
+              disabled={isAdding}
+            >
+              {isAdding ? 'Adding...' : 'Add Sender'}
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
+      </div>
 
-        <div className="senders-list-container">
-          <h3>Your Sender Emails ({senders.length})</h3>
-          {senders.length === 0 ? (
-            <div className="no-senders">
-              <p>No sender emails added yet. Add your first sender email above!</p>
-              <div className="info-box">
-                <h4>How it works:</h4>
-                <ol>
-                  <li>Add your business email address</li>
-                  <li>Check your email for the verification link</li>
-                  <li>Click the verification link to verify your email</li>
-                  <li>Once verified, you can use it to send campaigns</li>
-                </ol>
-              </div>
-            </div>
-          ) : (
-            <div className="senders-grid">
-              {senders.map((sender) => (
-                <div key={sender.id} className={`sender-card ${sender.is_default ? 'default-sender' : ''}`}>
-                  <div className="sender-header">
-                    <h4>
-                      {sender.display_name || sender.email}
-                      {sender.is_default && <span className="default-badge">Default</span>}
-                    </h4>
-                    <div className="sender-actions">
-                      {sender.verification_status === 'verified' && !sender.is_default && (
-                        <button
-                          onClick={() => handleSetDefault(sender.id)}
-                          className="set-default-button"
-                          title="Set as default"
-                        >
-                          ⭐
-                        </button>
-                      )}
-                      {sender.verification_status === 'pending' && (
-                        <button
-                          onClick={() => handleResendVerification(sender.id)}
-                          className="resend-button"
-                          title="Resend verification email"
-                        >
-                          📧
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(sender.id)}
-                        className="delete-button"
-                        title="Delete sender email"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                  <div className="sender-content">
-                    <p className="sender-email">
-                      <strong>Email:</strong> {sender.email}
-                    </p>
-                    <p className="sender-status">
-                      <strong>Status:</strong> {getStatusBadge(sender.verification_status)}
-                    </p>
-                    <p className="sender-date">
-                      Added: {formatDate(sender.created_at)}
-                    </p>
-                    {sender.verification_status === 'pending' && (
-                      <div className="verification-info">
-                        <p>📬 Check your email for the verification link</p>
-                        <p>Click the link to verify this sender email</p>
-                      </div>
-                    )}
-                    {sender.verification_status === 'verified' && (
-                      <div className="verified-info">
-                        <p>✅ This email is verified and ready to use</p>
-                      </div>
+      {/* Senders List */}
+      <div className="senders-list">
+        <h2>Your Sender Emails</h2>
+        {senders.length === 0 ? (
+          <div className="no-senders">
+            <p>No sender emails added yet. Add your first sender email above.</p>
+          </div>
+        ) : (
+          <div className="senders-grid">
+            {senders.map((sender) => (
+              <div key={sender.id} className="sender-card">
+                <div className="sender-info">
+                  <h3>{sender.name}</h3>
+                  <p className="sender-email">{sender.email}</p>
+                  <div className="sender-status">
+                    <span 
+                      className={`status-badge status-${getStatusColor(sender.verification_status)}`}
+                    >
+                      {sender.verification_status}
+                    </span>
+                    {sender.is_default && (
+                      <span className="default-badge">Default</span>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="sender-actions">
+                  {sender.verification_status === 'verified' && !sender.is_default && (
+                    <button
+                      onClick={() => handleSetDefault(sender.id)}
+                      className="btn-secondary"
+                    >
+                      Set as Default
+                    </button>
+                  )}
+                  {sender.verification_status === 'pending' && (
+                    <button
+                      onClick={() => handleResendVerification(sender.id)}
+                      className="btn-secondary"
+                    >
+                      Resend Verification
+                    </button>
+                  )}
+                  {!sender.is_default && (
+                    <button
+                      onClick={() => handleDeleteSender(sender.id)}
+                      className="btn-danger"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

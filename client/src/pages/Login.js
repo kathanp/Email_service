@@ -1,328 +1,240 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaGoogle } from 'react-icons/fa';
+import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
-import { register as apiRegister, login as apiLogin } from '../services/authService';
 
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const [loginData, setLoginData] = useState({
-    email: '',
-    password: ''
-  });
-  const [registerData, setRegisterData] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  
-  // Password visibility states
-  const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Handle Google OAuth callback
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const token = urlParams.get('token');
-    
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
     if (token) {
-      console.log('Google OAuth token received:', token);
-      
-      // Store the token
-      localStorage.setItem('token', token);
-      
-      // Get user info from the backend using the token
-      const getUserInfo = async () => {
-        try {
-          console.log('Fetching user info...');
-          
-          // Check if we should use development endpoint
-          const isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-          const endpoint = isDevMode ? 'http://localhost:8000/api/auth/me/dev' : 'http://localhost:8000/api/auth/me';
-          
-          const response = await fetch(endpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          console.log('Response status:', response.status);
-          
-          if (response.ok) {
-            const userData = await response.json();
-            console.log('User data received:', userData);
-            localStorage.setItem('user', JSON.stringify(userData));
-            
-            // Clear the URL parameters
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            console.log('Navigating to dashboard...');
-            // Navigate to dashboard
-            navigate('/dashboard');
-          } else {
-            const errorData = await response.json();
-            console.error('Failed to get user info:', errorData);
-            setErrors({ general: 'Failed to get user information' });
-          }
-        } catch (error) {
-          console.error('Error getting user info:', error);
-          setErrors({ general: 'Failed to get user information' });
+      checkAuthStatus();
+    }
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${API_ENDPOINTS.AUTH}/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      };
-      
-      getUserInfo();
-    }
-  }, [location, navigate]);
+      });
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (isLogin) {
-      if (!loginData.email) newErrors.email = 'Email is required';
-      if (!loginData.password) newErrors.password = 'Password is required';
-    } else {
-      if (!registerData.name) newErrors.name = 'Name is required';
-      if (!registerData.email) newErrors.email = 'Email is required';
-      if (!registerData.password) newErrors.password = 'Password is required';
-      if (registerData.password !== registerData.confirmPassword) {
-        newErrors.confirmPassword = 'Passwords do not match';
+      if (response.ok) {
+        const userData = await response.json();
+        localStorage.setItem('user', JSON.stringify(userData));
+        navigate('/dashboard');
+      } else {
+        // Token is invalid, remove it
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
-      if (registerData.password.length < 6) {
-        newErrors.password = 'Password must be at least 6 characters';
-      }
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setLoading(true);
-    setErrors({});
-    try {
-      const result = await apiLogin(loginData);
-      localStorage.setItem('token', result.access_token);
-      localStorage.setItem('user', JSON.stringify(result.user));
-      navigate('/dashboard');
     } catch (error) {
-      setErrors({ general: error.message });
-    } finally {
-      setLoading(false);
+      console.error('Auth check failed:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
   };
 
-  const handleRegister = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-    setLoading(true);
-    setErrors({});
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+
     try {
-      await apiRegister(registerData);
-      // After registration, auto-login
-      const result = await apiLogin({ email: registerData.email, password: registerData.password });
-      localStorage.setItem('token', result.access_token);
-      localStorage.setItem('user', JSON.stringify(result.user));
-      navigate('/dashboard');
+      if (!isLogin && formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        setIsLoading(false);
+        return;
+      }
+
+      const endpoint = isLogin ? `${API_ENDPOINTS.AUTH}/login` : `${API_ENDPOINTS.AUTH}/register`;
+      const body = isLogin 
+        ? { email: formData.email, password: formData.password }
+        : { name: formData.name, email: formData.email, password: formData.password };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (isLogin) {
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setSuccess('Login successful! Redirecting...');
+          setTimeout(() => navigate('/dashboard'), 1000);
+        } else {
+          setSuccess('Registration successful! Please log in.');
+          setIsLogin(true);
+          setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+        }
+      } else {
+        setError(data.detail || (isLogin ? 'Login failed' : 'Registration failed'));
+      }
     } catch (error) {
-      setErrors({ general: error.message });
+      setError('Network error. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    setErrors({});
+    setIsGoogleLoading(true);
+    setError('');
+    
     try {
-      // Get Google OAuth URL from backend
-      const response = await fetch('http://localhost:8000/api/v1/google-auth/login-url');
-      const data = await response.json();
+      const response = await fetch(`${API_ENDPOINTS.GOOGLE_AUTH}/login-url`);
       
-      if (data.success) {
-        // Redirect to Google OAuth with prompt=select_account to force account picker
-        let url = data.authorization_url;
-        if (!url.includes('prompt=')) {
-          url += (url.includes('?') ? '&' : '?') + 'prompt=select_account';
-        }
-        window.location.href = url;
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.auth_url;
       } else {
-        setErrors({ general: 'Failed to get Google login URL' });
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to initiate Google login');
       }
     } catch (error) {
-      setErrors({ general: 'Failed to initiate Google login' });
+      setError('Network error. Please try again.');
     } finally {
-      setGoogleLoading(false);
+      setIsGoogleLoading(false);
     }
   };
 
-  const switchMode = () => {
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const toggleMode = () => {
     setIsLogin(!isLogin);
-    setErrors({});
+    setError('');
+    setSuccess('');
+    setFormData({ name: '', email: '', password: '', confirmPassword: '' });
   };
 
   return (
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>Email Bot</h1>
-          <p>Manage your email campaigns efficiently</p>
-        </div>
-        
-        <div className="auth-tabs">
-          <button 
-            className={`tab ${isLogin ? 'active' : ''}`}
-            onClick={() => setIsLogin(true)}
-          >
-            Login
-          </button>
-          <button 
-            className={`tab ${!isLogin ? 'active' : ''}`}
-            onClick={() => setIsLogin(false)}
-          >
-            Register
-          </button>
+          <h1>{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
+          <p>{isLogin ? 'Sign in to your account' : 'Join us today'}</p>
         </div>
 
-        {errors.general && (
-          <div className="error-message">
-            {errors.general}
-          </div>
-        )}
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
 
-        {isLogin ? (
-          <>
-            <form onSubmit={handleLogin} className="auth-form">
-              <div className="form-group">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                  className={errors.email ? 'error' : ''}
-                  disabled={loading}
-                />
-                {errors.email && <span className="error-text">{errors.email}</span>}
-              </div>
-              
-              <div className="form-group password-group">
-                <input
-                  type={showLoginPassword ? "text" : "password"}
-                  placeholder="Password"
-                  value={loginData.password}
-                  onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                  className={errors.password ? 'error' : ''}
-                  disabled={loading}
-                />
-                <span
-                  className="password-toggle"
-                  onClick={() => setShowLoginPassword(!showLoginPassword)}
-                >
-                  {showLoginPassword ? <FaEyeSlash /> : <FaEye />}
-                </span>
-                {errors.password && <span className="error-text">{errors.password}</span>}
-              </div>
-              
-              <button type="submit" className={`auth-button${loading ? ' disabled' : ''}`} disabled={loading}>
-                {loading ? 'Logging in...' : 'Login'}
-              </button>
-            </form>
-
-            <div className="divider">
-              <span>or</span>
-            </div>
-
-            <button 
-              onClick={handleGoogleLogin} 
-              className={`google-auth-button${googleLoading ? ' disabled' : ''}`} 
-              disabled={googleLoading}
-            >
-              <FaGoogle />
-              {googleLoading ? 'Connecting to Google...' : 'Sign in with Google'}
-            </button>
-          </>
-        ) : (
-          <form onSubmit={handleRegister} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form">
+          {!isLogin && (
             <div className="form-group">
+              <label htmlFor="name">Full Name</label>
               <input
                 type="text"
-                placeholder="Full Name"
-                value={registerData.name}
-                onChange={(e) => setRegisterData({...registerData, name: e.target.value})}
-                className={errors.name ? 'error' : ''}
-                disabled={loading}
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required={!isLogin}
+                placeholder="Enter your full name"
               />
-              {errors.name && <span className="error-text">{errors.name}</span>}
             </div>
-            
+          )}
+
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              placeholder="Enter your email"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              required
+              placeholder="Enter your password"
+            />
+          </div>
+
+          {!isLogin && (
             <div className="form-group">
+              <label htmlFor="confirmPassword">Confirm Password</label>
               <input
-                type="email"
-                placeholder="Email"
-                value={registerData.email}
-                onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
-                className={errors.email ? 'error' : ''}
-                disabled={loading}
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                required={!isLogin}
+                placeholder="Confirm your password"
               />
-              {errors.email && <span className="error-text">{errors.email}</span>}
             </div>
-            
-            <div className="form-group password-group">
-              <input
-                type={showRegisterPassword ? "text" : "password"}
-                placeholder="Password"
-                value={registerData.password}
-                onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
-                className={errors.password ? 'error' : ''}
-                disabled={loading}
-              />
-              <span
-                className="password-toggle"
-                onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-              >
-                {showRegisterPassword ? <FaEyeSlash /> : <FaEye />}
-              </span>
-              {errors.password && <span className="error-text">{errors.password}</span>}
-            </div>
-            
-            <div className="form-group password-group">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm Password"
-                value={registerData.confirmPassword}
-                onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
-                className={errors.confirmPassword ? 'error' : ''}
-                disabled={loading}
-              />
-              <span
-                className="password-toggle"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-              </span>
-              {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-            </div>
-            
-            <button type="submit" className={`auth-button${loading ? ' disabled' : ''}`} disabled={loading}>
-              {loading ? 'Registering...' : 'Register'}
-            </button>
-          </form>
-        )}
+          )}
+
+          <button 
+            type="submit" 
+            className="btn-primary auth-btn"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
+          </button>
+        </form>
+
+        <div className="auth-divider">
+          <span>or</span>
+        </div>
+
+        <button 
+          onClick={handleGoogleLogin}
+          className="btn-google auth-btn"
+          disabled={isGoogleLoading}
+        >
+          {isGoogleLoading ? 'Loading...' : 'Continue with Google'}
+        </button>
 
         <div className="auth-footer">
           <p>
             {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button type="button" onClick={switchMode} className="switch-mode" disabled={loading}>
-              {isLogin ? 'Register here' : 'Login here'}
+            <button 
+              type="button" 
+              onClick={toggleMode}
+              className="link-button"
+            >
+              {isLogin ? 'Sign up' : 'Sign in'}
             </button>
           </p>
         </div>

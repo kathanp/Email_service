@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
   TEMPLATES: `${API_BASE_URL}/api/templates`,
   FILES: `${API_BASE_URL}/api/files`,
   SENDERS: `${API_BASE_URL}/api/senders`,
+  CUSTOMERS: `${API_BASE_URL}/api/customers`,
   STATS: `${API_BASE_URL}/api/stats`,
   CAMPAIGNS: `${API_BASE_URL}/api/campaigns`,
   SUBSCRIPTIONS: `${API_BASE_URL}/api/v1/subscriptions`,

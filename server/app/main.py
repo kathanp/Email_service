@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import auth, stats, files, templates, senders
+from .routes import auth, stats, files, templates, senders, customers
 from .api.v1 import campaigns, google_auth, subscriptions
 from .core.config import settings
 from .db.mongodb import MongoDB
@@ -32,6 +32,7 @@ app.include_router(stats.router, prefix="/api/stats", tags=["Statistics"])
 app.include_router(files.router, prefix="/api/files", tags=["Files"])
 app.include_router(templates.router, prefix="/api/templates", tags=["Templates"])
 app.include_router(senders.router, prefix="/api/senders", tags=["Senders"])
+app.include_router(customers.router, prefix="/api/customers", tags=["Customers"])
 app.include_router(campaigns.router, prefix="/api/campaigns", tags=["Campaigns"])
 app.include_router(google_auth.router, prefix="/api/v1/google-auth", tags=["Google OAuth"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])

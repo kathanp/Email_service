@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_ENDPOINTS } from '../config';
 import './CustomerManager.css';
 
 function AutonomousCampaign() {
@@ -39,7 +40,7 @@ function AutonomousCampaign() {
   const fetchFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/files/', {
+      const response = await fetch(`${API_ENDPOINTS.FILES}/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -59,7 +60,7 @@ function AutonomousCampaign() {
   const fetchTemplates = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/templates/', {
+      const response = await fetch(`${API_ENDPOINTS.TEMPLATES}/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -79,7 +80,7 @@ function AutonomousCampaign() {
   const fetchSenders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/senders/', {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -114,7 +115,7 @@ function AutonomousCampaign() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/campaigns/validate-template', {
+      const response = await fetch(`${API_ENDPOINTS.CAMPAIGNS}/validate-template`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,7 +160,7 @@ function AutonomousCampaign() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/campaigns/preview', {
+      const response = await fetch(`${API_ENDPOINTS.CAMPAIGNS}/preview`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,24 +199,13 @@ function AutonomousCampaign() {
       return;
     }
 
-    // Check if selected sender is verified
-    const sender = senders.find(s => s.id === selectedSender);
-    if (!sender || sender.verification_status !== 'verified') {
-      setError('Please select a verified sender email');
-      return;
-    }
-
-    if (!window.confirm('Are you sure you want to send this campaign? This action cannot be undone.')) {
-      return;
-    }
-
     setIsLoading(true);
     setError('');
     setSuccess('');
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/campaigns/', {
+      const response = await fetch(`${API_ENDPOINTS.CAMPAIGNS}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -224,28 +214,34 @@ function AutonomousCampaign() {
         body: JSON.stringify({
           name: campaignName,
           file_id: selectedFile,
-          template_id: selectedTemplate
+          template_id: selectedTemplate,
+          sender_id: selectedSender
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        setSuccess(`Campaign "${campaignName}" started successfully! ${data.total_emails} emails will be sent from ${sender.email}.`);
+        setSuccess(`Campaign "${campaignName}" started successfully!`);
         
-        // Start live status polling
-        startLiveStatusPolling(data.id);
+        // Start polling for status updates
+        if (data.id) {
+          startLiveStatusPolling(data.id);
+        }
         
+        // Reset form
         setCampaignName('');
         setSelectedFile('');
         setSelectedTemplate('');
-        setSelectedSender('');
         setValidationData(null);
+        
+        // Refresh campaigns list
+        fetchRecentCampaigns();
       } else {
         const errorData = await response.json();
-        setError(errorData.detail || 'Failed to send campaign');
+        setError(errorData.detail || 'Failed to start campaign');
       }
     } catch (err) {
-      setError('Network error sending campaign');
+      setError('Network error starting campaign');
     } finally {
       setIsLoading(false);
     }
@@ -269,7 +265,7 @@ function AutonomousCampaign() {
     const interval = setInterval(async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:8000/api/campaigns/${campaignId}/status`, {
+        const response = await fetch(`${API_ENDPOINTS.CAMPAIGNS}/${campaignId}/status`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -305,7 +301,7 @@ function AutonomousCampaign() {
   const fetchRecentCampaigns = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/stats/campaigns', {
+      const response = await fetch(`${API_ENDPOINTS.STATS}/campaigns`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
