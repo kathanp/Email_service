@@ -1,5 +1,5 @@
 import os
-from pydantic import BaseSettings, ConfigDict
+from pydantic_settings import BaseSettings
 from typing import Optional, List
 
 class Settings(BaseSettings):
@@ -47,9 +47,8 @@ class Settings(BaseSettings):
         else:
             self.CORS_ORIGINS = cors_origins
     
-    model_config = ConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8"
-    )
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 settings = Settings()
