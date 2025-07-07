@@ -36,12 +36,20 @@ export async function connectGmail() {
   return await res.json();
 }
 
+let isRedirecting = false;
+
 export const handleAuthError = (response) => {
-  if (response.status === 401 || response.status === 403) {
+  if ((response.status === 401 || response.status === 403) && !isRedirecting) {
     // Token is expired or invalid, redirect to login
+    isRedirecting = true;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    
+    // Only redirect if not already on login page
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+    
     return true; // Indicates auth error was handled
   }
   return false; // No auth error

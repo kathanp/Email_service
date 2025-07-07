@@ -17,6 +17,13 @@ function UsageStats() {
       try {
         const token = localStorage.getItem('token');
         
+        // Don't make API calls if no token (user not authenticated)
+        if (!token) {
+          setError('Please log in to view usage data');
+          setIsLoading(false);
+          return;
+        }
+        
         // Fetch current subscription and usage
         const [subscriptionResponse, usageResponse] = await Promise.all([
           fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/current`, {
@@ -30,6 +37,13 @@ function UsageStats() {
             }
           })
         ]);
+
+        // Check for auth errors
+        if (subscriptionResponse.status === 401 || usageResponse.status === 401) {
+          setError('Authentication required');
+          setIsLoading(false);
+          return;
+        }
 
         if (subscriptionResponse.ok && usageResponse.ok) {
           const subscription = await subscriptionResponse.json();

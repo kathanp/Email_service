@@ -30,13 +30,18 @@ export const AppProvider = ({ children }) => {
   // Fetch templates
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await apiRequest('http://localhost:8000/api/templates/');
+      // Use development endpoint that doesn't require authentication
+      const response = await apiRequest('http://localhost:8000/api/templates/dev');
       if (response && response.ok) {
         const data = await response.json();
         setTemplates(data);
+      } else {
+        console.warn('Templates endpoint not available, using empty array');
+        setTemplates([]);
       }
     } catch (error) {
       console.error('Error fetching templates:', error);
+      setTemplates([]);
     }
   }, []);
 
