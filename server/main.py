@@ -134,11 +134,13 @@ async def get_google_login_url():
     """Get Google OAuth login URL."""
     try:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:3000/auth/callback")
+        # Redirect URI should point to backend API endpoint
+        backend_url = os.getenv("BACKEND_URL", "https://your-backend-url.vercel.app")
+        redirect_uri = f"{backend_url}/api/v1/google-auth/callback"
         
         if not client_id:
             return {
-                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=http://localhost:3000/auth/callback&response_type=code&scope=email profile",
+                "auth_url": f"https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri={redirect_uri}&response_type=code&scope=email profile",
                 "client_id": "test",
                 "message": "Using test client ID"
             }
@@ -161,15 +163,12 @@ async def get_google_login_url():
 async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
-        # Mock implementation - in real app, exchange code for tokens
-        # For now, return success and redirect info
-        return {
-            "message": "Google OAuth callback received",
-            "code": code,
-            "status": "success",
-            "redirect_url": "/dashboard",
-            "access_token": "mock_token_for_google_user"
-        }
+        # Redirect to frontend with the authorization code
+        frontend_url = os.getenv("FRONTEND_URL", "https://www.mailsflow.net")
+        redirect_url = f"{frontend_url}/auth/callback?code={code}"
+        
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=redirect_url)
         
     except Exception as e:
         logger.error(f"Google callback error: {str(e)}")
