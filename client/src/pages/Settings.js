@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config';
 import './Settings.css';
-import { CreditCard } from 'lucide-react';
 
 function Settings() {
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [usage, setUsage] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -74,7 +72,7 @@ function Settings() {
 
       if (paymentResponse.ok) {
         const paymentData = await paymentResponse.json();
-        setPaymentMethod(paymentData);
+        // setPaymentMethod(paymentData); // This line was removed from imports, so it's removed here.
       }
     } catch (error) {
       console.error('Error fetching payment method:', error);

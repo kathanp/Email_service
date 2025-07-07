@@ -218,7 +218,7 @@ export const AppProvider = ({ children }) => {
     };
 
     loadData();
-  }, []);
+  }, [fetchStats, fetchActivity, fetchCampaignStats, fetchTemplates]);
 
   const value = {
     stats,

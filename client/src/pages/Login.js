@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
 
@@ -16,15 +16,6 @@ function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('token');
-    if (token) {
-      checkAuthStatus();
-    }
-  }, []);
 
   const checkAuthStatus = async () => {
     try {
@@ -52,6 +43,14 @@ function AuthPage() {
       localStorage.removeItem('user');
     }
   };
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+      checkAuthStatus();
+    }
+  }, [checkAuthStatus]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

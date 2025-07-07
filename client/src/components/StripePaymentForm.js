@@ -4,10 +4,8 @@ import { API_ENDPOINTS } from '../config';
 import './StripePaymentForm.css';
 
 function StripePaymentForm() {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [stripeKey, setStripeKey] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -29,7 +27,8 @@ function StripePaymentForm() {
       const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/stripe-key`);
       if (response.ok) {
         const data = await response.json();
-        setStripeKey(data.publishable_key);
+        // Stripe key would be used here in real implementation
+        console.log('Stripe key loaded:', data.publishable_key);
       } else {
         setError('Failed to load payment configuration');
       }
@@ -43,10 +42,6 @@ function StripePaymentForm() {
     setTimeout(() => {
       navigate('/dashboard');
     }, 2000);
-  };
-
-  const handlePaymentError = (error) => {
-    setError(error.message || 'Payment failed. Please try again.');
   };
 
   if (!subscription || !plan) {
@@ -99,10 +94,9 @@ function StripePaymentForm() {
 
           <button
             className="btn-primary payment-button"
-            onClick={() => handlePaymentSuccess()}
-            disabled={loading}
+            onClick={handlePaymentSuccess}
           >
-            {loading ? 'Processing...' : 'Complete Payment'}
+            Complete Payment
           </button>
         </div>
 
