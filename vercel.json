@@ -10,10 +10,7 @@
     },
     {
       "src": "server/app/main.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
@@ -25,8 +22,5 @@
       "src": "/(.*)",
       "dest": "/client/$1"
     }
-  ],
-  "env": {
-    "PYTHONPATH": "server"
-  }
+  ]
 } 
