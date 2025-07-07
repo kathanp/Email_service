@@ -1,9 +1,13 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict
+from pydantic import BaseModel, Field, ConfigDict, GetJsonSchemaHandler
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from bson import ObjectId
 
 class PyObjectId(ObjectId):
+    @classmethod
+    def __get_pydantic_json_schema__(cls, _core_schema: Any, _handler: GetJsonSchemaHandler) -> dict[str, Any]:
+        return {"type": "string"}
+
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
@@ -13,10 +17,6 @@ class PyObjectId(ObjectId):
         if not ObjectId.is_valid(v):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
-
-    @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
 
 class CampaignCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
