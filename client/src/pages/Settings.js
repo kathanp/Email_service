@@ -74,19 +74,19 @@ function Settings() {
   if (loading) {
     return (
       <div className="settings-container">
-        <div className="loading">Loading settings...</div>
+          <div className="loading">Loading settings...</div>
       </div>
     );
   }
 
   return (
     <div className="settings-container">
-      <div className="settings-header">
+        <div className="settings-header">
         <h1>Account Settings</h1>
         <p>Manage your account and subscription</p>
-      </div>
+        </div>
 
-      {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">{error}</div>}
 
       <div className="settings-grid">
         {/* User Information */}
@@ -97,7 +97,7 @@ function Settings() {
               <div className="info-row">
                 <span className="label">Name:</span>
                 <span className="value">{user.full_name}</span>
-              </div>
+          </div>
               <div className="info-row">
                 <span className="label">Email:</span>
                 <span className="value">{user.email}</span>
@@ -115,7 +115,7 @@ function Settings() {
         {/* Subscription Information */}
         <div className="settings-card">
           <h2>Subscription</h2>
-          {subscription ? (
+                {subscription ? (
             <div className="subscription-info">
               <div className="info-row">
                 <span className="label">Plan:</span>
@@ -124,32 +124,32 @@ function Settings() {
               <div className="info-row">
                 <span className="label">Billing Cycle:</span>
                 <span className="value">{subscription.billing_cycle}</span>
-              </div>
+                        </div>
               <div className="info-row">
                 <span className="label">Status:</span>
                 <span className={`value status-${subscription.status.toLowerCase()}`}>
-                  {subscription.status}
-                </span>
-              </div>
+                            {subscription.status}
+                          </span>
+                        </div>
               <div className="info-row">
                 <span className="label">Next Billing:</span>
                 <span className="value">
                   {new Date(subscription.current_period_end).toLocaleDateString()}
                 </span>
-              </div>
+                      </div>
               <button className="btn-secondary" onClick={handleUpgrade}>
                 Manage Subscription
               </button>
-            </div>
-          ) : (
-            <div className="no-subscription">
+                  </div>
+                ) : (
+                  <div className="no-subscription">
               <p>No active subscription</p>
               <button className="btn-primary" onClick={handleUpgrade}>
                 Choose a Plan
-              </button>
-            </div>
-          )}
-        </div>
+                    </button>
+                  </div>
+                )}
+              </div>
 
         {/* Usage Statistics */}
         <div className="settings-card">
@@ -159,11 +159,11 @@ function Settings() {
               <div className="info-row">
                 <span className="label">Emails Sent (This Month):</span>
                 <span className="value">{usage.emails_sent_this_month}</span>
-              </div>
+                  </div>
               <div className="info-row">
                 <span className="label">Emails Sent (Total):</span>
                 <span className="value">{usage.emails_sent_total}</span>
-              </div>
+                </div>
               <div className="info-row">
                 <span className="label">Senders Used:</span>
                 <span className="value">{usage.senders_used}</span>

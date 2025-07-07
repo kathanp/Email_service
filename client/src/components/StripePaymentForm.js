@@ -45,7 +45,7 @@ function StripePaymentForm() {
   };
 
   if (!subscription || !plan) {
-    return (
+  return (
       <div className="payment-container">
         <div className="loading">Loading payment form...</div>
       </div>
@@ -90,7 +90,7 @@ function StripePaymentForm() {
           <div className="stripe-placeholder">
             <p>Stripe payment form would be integrated here</p>
             <p>For demo purposes, this is a placeholder</p>
-          </div>
+      </div>
 
           <button
             className="btn-primary payment-button"
@@ -102,12 +102,12 @@ function StripePaymentForm() {
 
         <div className="payment-footer">
           <p>By completing this payment, you agree to our Terms of Service and Privacy Policy.</p>
-          <button
+      <button 
             className="btn-secondary"
             onClick={() => navigate('/pricing')}
-          >
+      >
             Back to Plans
-          </button>
+      </button>
         </div>
       </div>
     </div>

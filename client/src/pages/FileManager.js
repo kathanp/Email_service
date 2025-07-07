@@ -23,7 +23,7 @@ function FileManager() {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setFiles(data);
@@ -42,7 +42,7 @@ function FileManager() {
     if (!file) return;
 
     setUploading(true);
-    setError('');
+      setError('');
     setSuccess('');
 
     const formData = new FormData();
@@ -174,10 +174,10 @@ function FileManager() {
 
   return (
     <div className="file-manager-container">
-      <div className="file-manager-header">
-        <h1>File Manager</h1>
+        <div className="file-manager-header">
+          <h1>File Manager</h1>
         <p>Upload and manage your contact lists</p>
-      </div>
+        </div>
 
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
@@ -185,9 +185,9 @@ function FileManager() {
       {/* File Upload */}
       <div className="file-upload-section">
         <h2>Upload New File</h2>
-        <div className="upload-area">
-          <input
-            type="file"
+          <div className="upload-area">
+              <input
+                type="file"
             id="file-upload"
             accept=".xlsx,.xls,.csv"
             onChange={handleFileUpload}
@@ -196,7 +196,7 @@ function FileManager() {
           />
           <label htmlFor="file-upload" className="upload-button">
             {uploading ? 'Uploading...' : 'Choose File'}
-          </label>
+              </label>
           <p className="upload-hint">
             Supported formats: Excel (.xlsx, .xls), CSV (.csv)
           </p>
@@ -214,7 +214,7 @@ function FileManager() {
           <div className="files-grid">
             {files.map((file) => (
               <div key={file.id} className="file-card">
-                <div className="file-info">
+                  <div className="file-info">
                   <h3>{file.filename}</h3>
                   <p className="file-size">{file.size} bytes</p>
                   <p className="file-uploaded">
@@ -242,12 +242,12 @@ function FileManager() {
                       Process
                     </button>
                   )}
-                  <button
+                    <button
                     onClick={() => handlePreviewFile(file.id)}
                     className="btn-secondary"
-                  >
+                    >
                     Preview
-                  </button>
+                    </button>
                   <button
                     onClick={() => handleDeleteFile(file.id)}
                     className="btn-danger"
@@ -276,24 +276,24 @@ function FileManager() {
               </div>
               <div className="preview-table">
                 <table>
-                  <thead>
-                    <tr>
+                    <thead>
+                      <tr>
                       {previewData.columns.map((column, index) => (
                         <th key={index}>{column}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
                     {previewData.sample_data.map((row, rowIndex) => (
                       <tr key={rowIndex}>
                         {previewData.columns.map((column, colIndex) => (
                           <td key={colIndex}>{row[column] || ''}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
             </div>
           </div>
         </div>

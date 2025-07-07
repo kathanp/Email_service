@@ -23,21 +23,21 @@ function AuthPage() {
       if (!token) return;
 
       const response = await fetch(`${API_ENDPOINTS.AUTH}/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        localStorage.setItem('user', JSON.stringify(userData));
-        navigate('/dashboard');
-      } else {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            localStorage.setItem('user', JSON.stringify(userData));
+            navigate('/dashboard');
+          } else {
         // Token is invalid, remove it
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-      }
-    } catch (error) {
+          }
+        } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -143,7 +143,7 @@ function AuthPage() {
           <h1>{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
           <p>{isLogin ? 'Sign in to your account' : 'Join us today'}</p>
         </div>
-
+        
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
 
@@ -162,11 +162,11 @@ function AuthPage() {
               />
             </div>
           )}
-
-          <div className="form-group">
+            
+            <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input
-              type="email"
+              <input
+                type="email"
               id="email"
               name="email"
               value={formData.email}
@@ -174,11 +174,11 @@ function AuthPage() {
               required
               placeholder="Enter your email"
             />
-          </div>
-
+            </div>
+            
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
+              <input
               type="password"
               id="password"
               name="password"
@@ -187,8 +187,8 @@ function AuthPage() {
               required
               placeholder="Enter your password"
             />
-          </div>
-
+            </div>
+            
           {!isLogin && (
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password</label>
@@ -210,8 +210,8 @@ function AuthPage() {
             disabled={isLoading}
           >
             {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
-          </button>
-        </form>
+            </button>
+          </form>
 
         <div className="auth-divider">
           <span>or</span>

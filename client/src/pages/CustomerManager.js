@@ -225,7 +225,7 @@ function AutonomousCampaign() {
         
         // Start polling for status updates
         if (data.id) {
-          startLiveStatusPolling(data.id);
+        startLiveStatusPolling(data.id);
         }
         
         // Reset form
