@@ -3,7 +3,11 @@ import { API_ENDPOINTS } from '../config';
 const API_URL = API_ENDPOINTS.AUTH;
 
 export async function register({ name, email, password }) {
-  const res = await fetch(`${API_URL}/register`, {
+  // Check if we should use development endpoint
+  const isDevMode = !localStorage.getItem('token') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const endpoint = isDevMode ? `${API_URL}/register/dev` : `${API_URL}/register`;
+  
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
@@ -13,7 +17,11 @@ export async function register({ name, email, password }) {
 }
 
 export async function login({ email, password }) {
-  const res = await fetch(`${API_URL}/login`, {
+  // Check if we should use development endpoint
+  const isDevMode = !localStorage.getItem('token') && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const endpoint = isDevMode ? `${API_URL}/login/dev` : `${API_URL}/login`;
+  
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),

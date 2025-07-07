@@ -14,8 +14,16 @@ class CustomerService:
     def __init__(self, db: MongoDB):
         self.db = db
 
+    def _get_customers_collection(self):
+        """Get the customers collection from MongoDB."""
+        try:
+            return MongoDB.get_collection("customers")
+        except Exception as e:
+            logger.warning(f"Database not available: {e}")
+            return None
+
     async def import_customers(self, file: UploadFile, user_id: str) -> List[Customer]:
-        """Import customers from uploaded file"""
+        """Import customers from uploaded file."""
         try:
             # Read file content
             content = await file.read()
@@ -32,6 +40,8 @@ class CustomerService:
                 )
 
             customers = []
+            customers_collection = self._get_customers_collection()
+            
             for _, row in df.iterrows():
                 # Create customer from row data
                 customer_data = {
@@ -47,9 +57,11 @@ class CustomerService:
                 if not customer_data["email"]:
                     continue
                 
+                # Insert into database
+                result = await customers_collection.insert_one(customer_data)
+                customer_data["id"] = str(result.inserted_id)
                 customers.append(Customer(**customer_data))
 
-            # Store in database (mock for now)
             logger.info(f"Imported {len(customers)} customers for user {user_id}")
             
             return customers
@@ -62,10 +74,24 @@ class CustomerService:
             )
 
     async def get_customers(self, user_id: str) -> List[Customer]:
-        """Get all customers for a user"""
+        """Get all customers for a user."""
         try:
-            # Mock implementation for development
-            return []
+            customers_collection = self._get_customers_collection()
+            cursor = customers_collection.find({"user_id": user_id}).sort("created_at", -1)
+            customers = await cursor.to_list(length=None)
+            
+            return [
+                Customer(
+                    id=str(customer["_id"]),
+                    email=customer["email"],
+                    name=customer.get("name"),
+                    phone=customer.get("phone"),
+                    company=customer.get("company"),
+                    user_id=customer["user_id"],
+                    created_at=customer["created_at"]
+                )
+                for customer in customers
+            ]
         except Exception as e:
             logger.error(f"Error getting customers: {str(e)}")
             raise HTTPException(
@@ -74,16 +100,20 @@ class CustomerService:
             )
 
     async def create_customer(self, customer: CustomerCreate, user_id: str) -> Customer:
-        """Create a new customer"""
+        """Create a new customer."""
         try:
-            customer_data = Customer(
-                **customer.dict(),
-                user_id=user_id,
-                created_at=datetime.utcnow()
-            )
+            customers_collection = self._get_customers_collection()
             
-            # Mock implementation for development
-            return customer_data
+            customer_data = {
+                **customer.dict(),
+                "user_id": user_id,
+                "created_at": datetime.utcnow()
+            }
+            
+            result = await customers_collection.insert_one(customer_data)
+            customer_data["id"] = str(result.inserted_id)
+            
+            return Customer(**customer_data)
         except Exception as e:
             logger.error(f"Error creating customer: {str(e)}")
             raise HTTPException(

@@ -1,3 +1,0 @@
-2025-07-03 16:48:42,492 - INFO - Loading contacts from ../../input/Contacts.xlsx
-2025-07-03 16:48:42,493 - ERROR - Error loading contacts: [Errno 2] No such file or directory: '../../input/Contacts.xlsx'
-2025-07-03 16:48:42,493 - ERROR - Campaign error: [Errno 2] No such file or directory: '../../input/Contacts.xlsx'

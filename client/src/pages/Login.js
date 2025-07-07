@@ -43,7 +43,12 @@ function AuthPage() {
       const getUserInfo = async () => {
         try {
           console.log('Fetching user info...');
-          const response = await fetch('http://localhost:8000/api/auth/me', {
+          
+          // Check if we should use development endpoint
+          const isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const endpoint = isDevMode ? 'http://localhost:8000/api/auth/me/dev' : 'http://localhost:8000/api/auth/me';
+          
+          const response = await fetch(endpoint, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
