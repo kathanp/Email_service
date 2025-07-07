@@ -28,6 +28,7 @@ customers_db = {}
 senders_db = {}
 campaigns_db = {}
 files_db = {}
+sessions_db = {}  # Add session storage
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
@@ -143,6 +144,46 @@ async def login(request: Request):
             detail=f"Login failed: {str(e)}"
         )
 
+@app.get("/api/auth/session/{session_id}")
+async def get_session(session_id: str):
+    """Get session data."""
+    try:
+        if session_id not in sessions_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found"
+            )
+        
+        session = sessions_db[session_id]
+        user_email = session["user_email"]
+        
+        if user_email not in users_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        user = users_db[user_email]
+        
+        return {
+            "access_token": session["access_token"],
+            "token_type": "bearer",
+            "user": {
+                "uid": user["uid"],
+                "id": user["id"],
+                "email": user["email"],
+                "username": user["username"],
+                "full_name": user["full_name"]
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Get session error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get session: {str(e)}"
+        )
+
 @app.get("/api/v1/google-auth/login-url")
 async def get_google_login_url():
     """Get Google OAuth login URL."""
@@ -206,8 +247,17 @@ async def google_auth_callback(code: str):
                 "created_at": datetime.utcnow()
             }
         
-        # Redirect directly to clean dashboard URL with token for frontend to store
-        dashboard_url = f"https://www.mailsflow.net/dashboard?auth_token={access_token}&uid={uid}"
+        # Create a session
+        session_id = f"session_{hash(code) % 100000}"
+        sessions_db[session_id] = {
+            "user_email": user_email,
+            "uid": uid,
+            "access_token": access_token,
+            "created_at": datetime.utcnow()
+        }
+        
+        # Redirect to dashboard with session ID
+        dashboard_url = f"https://www.mailsflow.net/dashboard?session={session_id}"
         return RedirectResponse(url=dashboard_url)
         
     except Exception as e:

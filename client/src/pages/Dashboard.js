@@ -15,36 +15,36 @@ function Dashboard() {
   } = useAppContext();
 
   useEffect(() => {
-    // Check for Google OAuth token in URL parameters
-    const authToken = searchParams.get('auth_token');
-    const uid = searchParams.get('uid');
+    // Check for Google OAuth session in URL parameters
+    const sessionId = searchParams.get('session');
     
-    console.log('Dashboard useEffect - authToken:', authToken, 'uid:', uid);
+    console.log('Dashboard useEffect - sessionId:', sessionId);
     
-    if (authToken && uid) {
-      console.log('Google OAuth token received, storing authentication data...');
+    if (sessionId) {
+      console.log('Google OAuth session received, fetching authentication data...');
       
-      // Store the token
-      localStorage.setItem('token', authToken);
-      
-      // Create user object
-      const userData = {
-        uid: uid,
-        id: uid,
-        email: `google_user_${uid}@example.com`,
-        username: 'Google User',
-        full_name: 'Google User'
-      };
-      
-      // Store user data
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-      
-      // Force URL cleanup immediately
-      console.log('Forcing URL cleanup...');
-      window.location.replace('/dashboard');
-      
-      console.log('Authentication data stored, user logged in');
+      // Fetch session data from backend
+      fetch(`/api/auth/session/${sessionId}`)
+        .then(response => response.json())
+        .then(data => {
+          console.log('Session data received:', data);
+          
+          // Store the token
+          localStorage.setItem('token', data.access_token);
+          
+          // Store user data
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setUser(data.user);
+          
+          // Force URL cleanup immediately
+          console.log('Forcing URL cleanup...');
+          window.location.replace('/dashboard');
+          
+          console.log('Authentication data stored, user logged in');
+        })
+        .catch(error => {
+          console.error('Error fetching session:', error);
+        });
     } else {
       // Get user data from localStorage (normal login)
       const userData = localStorage.getItem('user');
