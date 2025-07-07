@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import logging
 import os
 from datetime import datetime, timedelta
@@ -134,13 +135,11 @@ async def get_google_login_url():
     """Get Google OAuth login URL."""
     try:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-        # Redirect URI should point to backend API endpoint
-        backend_url = os.getenv("BACKEND_URL", "https://your-backend-url.vercel.app")
-        redirect_uri = f"{backend_url}/api/v1/google-auth/callback"
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
         
         if not client_id:
             return {
-                "auth_url": f"https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri={redirect_uri}&response_type=code&scope=email profile",
+                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/auth/callback&response_type=code&scope=email profile",
                 "client_id": "test",
                 "message": "Using test client ID"
             }
@@ -163,12 +162,10 @@ async def get_google_login_url():
 async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
-        # Redirect to frontend with the authorization code
-        frontend_url = os.getenv("FRONTEND_URL", "https://www.mailsflow.net")
-        redirect_url = f"{frontend_url}/auth/callback?code={code}"
-        
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=redirect_url)
+        # Mock implementation - in real app, exchange code for tokens
+        # Redirect to frontend with the code
+        frontend_url = "https://www.mailsflow.net/auth/callback"
+        return RedirectResponse(url=f"{frontend_url}?code={code}")
         
     except Exception as e:
         logger.error(f"Google callback error: {str(e)}")
@@ -805,7 +802,7 @@ async def root():
 async def health():
     """Health check."""
     return {
-        "status": "healthy", 
+        "status": "healthy",
         "timestamp": datetime.utcnow().isoformat()
     }
 
