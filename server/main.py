@@ -142,11 +142,11 @@ async def get_google_login_url():
     """Get Google OAuth login URL."""
     try:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/api/v1/google-auth/callback")
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
         
         if not client_id:
             return {
-                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/api/v1/google-auth/callback&response_type=code&scope=email profile",
+                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/auth/callback&response_type=code&scope=email profile",
                 "client_id": "test",
                 "message": "Using test client ID"
             }
@@ -170,7 +170,7 @@ async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
         # Mock implementation - in real app, exchange code for tokens
-        # Redirect to frontend dashboard with success
+        # Process the authentication and redirect to frontend dashboard
         frontend_url = "https://www.mailsflow.net/dashboard"
         return RedirectResponse(url=frontend_url)
         
