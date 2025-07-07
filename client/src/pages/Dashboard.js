@@ -19,6 +19,8 @@ function Dashboard() {
     const authToken = searchParams.get('auth_token');
     const uid = searchParams.get('uid');
     
+    console.log('Dashboard useEffect - authToken:', authToken, 'uid:', uid);
+    
     if (authToken && uid) {
       console.log('Google OAuth token received, storing authentication data...');
       
@@ -38,7 +40,8 @@ function Dashboard() {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       
-      // Clean up URL parameters
+      // Clean up URL parameters immediately
+      console.log('Cleaning up URL parameters...');
       window.history.replaceState({}, document.title, '/dashboard');
       
       console.log('Authentication data stored, user logged in');
@@ -51,6 +54,17 @@ function Dashboard() {
     }
   }, [searchParams]); // Include searchParams in dependency array
 
+  // Additional effect to ensure URL cleanup
+  useEffect(() => {
+    const currentUrl = window.location.href;
+    console.log('Current URL:', currentUrl);
+    
+    // If URL still has parameters, clean them up
+    if (currentUrl.includes('auth_token') || currentUrl.includes('uid')) {
+      console.log('URL still has parameters, cleaning up...');
+      window.history.replaceState({}, document.title, '/dashboard');
+    }
+  }, []); // Run once on mount
 
 
   // Helper function to get user's display name
