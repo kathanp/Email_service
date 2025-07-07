@@ -1,7 +1,8 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import Optional
 from datetime import datetime
 from bson import ObjectId
+import re
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -19,28 +20,58 @@ class PyObjectId(ObjectId):
         field_schema.update(type="string")
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str
     username: Optional[str] = None  # Made optional for Google OAuth users
     full_name: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
     role: str = Field(default="user", pattern="^(admin|user)$")
 
+    @validator('email')
+    def validate_email(cls, v):
+        if not v:
+            raise ValueError('Email is required')
+        # Simple email validation regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+
 class UserCreate(UserBase):
     password: Optional[str] = None  # Made optional for Google OAuth users
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
+    @validator('email')
+    def validate_email(cls, v):
+        if not v:
+            raise ValueError('Email is required')
+        # Simple email validation regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+
 class GoogleUserCreate(BaseModel):
-    email: EmailStr
+    email: str
     google_id: str
     google_name: Optional[str] = None
     full_name: Optional[str] = None
 
+    @validator('email')
+    def validate_email(cls, v):
+        if not v:
+            raise ValueError('Email is required')
+        # Simple email validation regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     username: Optional[str] = None
     full_name: Optional[str] = None
     is_active: Optional[bool] = None
@@ -52,6 +83,16 @@ class UserUpdate(BaseModel):
     google_name: Optional[str] = None
     # AWS SES sender email (user's email for sending)
     sender_email: Optional[str] = None
+
+    @validator('email')
+    def validate_email(cls, v):
+        if v is not None:
+            # Simple email validation regex
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, v):
+                raise ValueError('Invalid email format')
+            return v.lower()
+        return v
 
 class UserInDB(UserBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")

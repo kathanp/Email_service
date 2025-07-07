@@ -1,12 +1,23 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, ConfigDict, validator
 from bson import ObjectId
+import re
 
 class SenderBase(BaseModel):
-    email: EmailStr
+    email: str
     display_name: Optional[str] = None
     is_default: bool = False
+
+    @validator('email')
+    def validate_email(cls, v):
+        if not v:
+            raise ValueError('Email is required')
+        # Simple email validation regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError('Invalid email format')
+        return v.lower()
 
 class SenderCreate(SenderBase):
     pass
