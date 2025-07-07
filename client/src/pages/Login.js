@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
@@ -17,7 +17,7 @@ function AuthPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -42,7 +42,7 @@ function AuthPage() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     // Check if user is already logged in

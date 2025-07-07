@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 
 const AppContext = createContext();
@@ -29,7 +29,7 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const apiRequest = async (url, options = {}) => {
+  const apiRequest = useCallback(async (url, options = {}) => {
     const token = localStorage.getItem('token');
     const config = {
       ...options,
@@ -50,9 +50,9 @@ export const AppProvider = ({ children }) => {
       console.error('API request failed:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.STATS}/summary`);
       if (response.ok) {
@@ -72,9 +72,9 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, [apiRequest]);
 
-  const fetchActivity = async () => {
+  const fetchActivity = useCallback(async () => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.STATS}/activity`);
       if (response.ok) {
@@ -87,9 +87,9 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching activity:', error);
     }
-  };
+  }, [apiRequest]);
 
-  const fetchCampaignStats = async () => {
+  const fetchCampaignStats = useCallback(async () => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.STATS}/campaigns`);
       if (response.ok) {
@@ -102,9 +102,9 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching campaign stats:', error);
     }
-  };
+  }, [apiRequest]);
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/`);
       if (response.ok) {
@@ -114,9 +114,9 @@ export const AppProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching templates:', error);
     }
-  };
+  }, [apiRequest]);
 
-  const createTemplate = async (templateData) => {
+  const createTemplate = useCallback(async (templateData) => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/`, {
         method: 'POST',
@@ -135,9 +135,9 @@ export const AppProvider = ({ children }) => {
       console.error('Error creating template:', error);
       return { success: false, error: 'Network error' };
     }
-  };
+  }, [apiRequest]);
 
-  const updateTemplate = async (templateId, templateData) => {
+  const updateTemplate = useCallback(async (templateId, templateData) => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}`, {
         method: 'PUT',
@@ -156,9 +156,9 @@ export const AppProvider = ({ children }) => {
       console.error('Error updating template:', error);
       return { success: false, error: 'Network error' };
     }
-  };
+  }, [apiRequest]);
 
-  const setDefaultTemplate = async (templateId) => {
+  const setDefaultTemplate = useCallback(async (templateId) => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}/set-default`, {
         method: 'POST'
@@ -179,9 +179,9 @@ export const AppProvider = ({ children }) => {
       console.error('Error setting default template:', error);
       return { success: false, error: 'Network error' };
     }
-  };
+  }, [apiRequest]);
 
-  const deleteTemplate = async (templateId) => {
+  const deleteTemplate = useCallback(async (templateId) => {
     try {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/${templateId}`, {
         method: 'DELETE'
@@ -198,7 +198,7 @@ export const AppProvider = ({ children }) => {
       console.error('Error deleting template:', error);
       return { success: false, error: 'Network error' };
     }
-  };
+  }, [apiRequest]);
 
   useEffect(() => {
     const loadData = async () => {

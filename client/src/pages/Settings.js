@@ -61,24 +61,6 @@ function Settings() {
     }
   };
 
-  const fetchPaymentMethod = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const paymentResponse = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/payment-method`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (paymentResponse.ok) {
-        const paymentData = await paymentResponse.json();
-        // setPaymentMethod(paymentData); // This line was removed from imports, so it's removed here.
-      }
-    } catch (error) {
-      console.error('Error fetching payment method:', error);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
