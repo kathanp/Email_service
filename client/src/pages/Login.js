@@ -87,9 +87,11 @@ function AuthPage() {
           setSuccess('Login successful! Redirecting...');
           setTimeout(() => navigate('/dashboard'), 1000);
         } else {
-          setSuccess('Registration successful! Please log in.');
-          setIsLogin(true);
-          setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+          // After successful registration, automatically log the user in
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setSuccess('Registration successful! Redirecting to dashboard...');
+          setTimeout(() => navigate('/dashboard'), 1000);
         }
       } else {
         setError(data.detail || (isLogin ? 'Login failed' : 'Registration failed'));

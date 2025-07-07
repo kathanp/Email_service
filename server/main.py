@@ -74,11 +74,18 @@ async def register(request: Request):
             "created_at": datetime.utcnow()
         }
         
+        # Create access token for automatic login
+        access_token = create_access_token(data={"sub": email})
+        
         return {
-            "id": user_id,
-            "email": email,
-            "username": username,
-            "full_name": full_name,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user_id,
+                "email": email,
+                "username": username,
+                "full_name": full_name
+            },
             "message": "User registered successfully"
         }
         
