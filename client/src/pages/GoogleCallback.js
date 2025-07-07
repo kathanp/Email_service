@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
 
 function GoogleCallback() {
@@ -21,24 +22,26 @@ function GoogleCallback() {
 
         console.log('Google callback code received:', code);
         
-        // Create mock user data and token
-        const userData = {
-          id: 'google_user_' + Date.now(),
-          email: 'google.user@example.com',
-          username: 'Google User',
-          full_name: 'Google User'
-        };
+        // Call the backend to handle the Google OAuth callback
+        const response = await fetch(`${API_ENDPOINTS.GOOGLE_AUTH}/callback?code=${code}`);
         
-        const token = 'google_token_' + Date.now();
-        
-        // Store the user data and token
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        console.log('Stored token, redirecting to dashboard...');
-        
-        // Force redirect to dashboard
-        window.location.href = '/dashboard';
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Google callback response:', data);
+          
+          // Store the token and user data from backend response
+          localStorage.setItem('token', data.access_token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          
+          console.log('Stored token, redirecting to dashboard...');
+          
+          // Force redirect to dashboard
+          window.location.href = '/dashboard';
+        } else {
+          const errorData = await response.json();
+          setError(errorData.detail || 'Google authentication failed');
+          setIsLoading(false);
+        }
         
       } catch (error) {
         console.error('Google callback error:', error);

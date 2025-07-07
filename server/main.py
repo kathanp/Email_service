@@ -163,9 +163,19 @@ async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
         # Mock implementation - in real app, exchange code for tokens
-        # Redirect to frontend with the code
-        frontend_url = "https://www.mailsflow.net/auth/callback"
-        return RedirectResponse(url=f"{frontend_url}?code={code}")
+        # Return success response with token for frontend to handle
+        return {
+            "message": "Google OAuth callback received",
+            "code": code,
+            "status": "success",
+            "access_token": "mock_token_for_google_user",
+            "user": {
+                "id": "google_user_1",
+                "email": "google.user@example.com",
+                "username": "Google User",
+                "full_name": "Google User"
+            }
+        }
         
     except Exception as e:
         logger.error(f"Google callback error: {str(e)}")
