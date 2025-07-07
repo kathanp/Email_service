@@ -9,7 +9,7 @@
       }
     },
     {
-      "src": "server/test_simple.py",
+      "src": "server/main.py",
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "15mb"
@@ -19,19 +19,19 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/test_simple.py"
+      "dest": "/server/main.py"
     },
     {
       "src": "/health",
-      "dest": "/server/test_simple.py"
+      "dest": "/server/main.py"
     },
     {
       "src": "/test",
-      "dest": "/server/test_simple.py"
+      "dest": "/server/main.py"
     },
     {
       "src": "/debug",
-      "dest": "/server/test_simple.py"
+      "dest": "/server/main.py"
     },
     {
       "src": "/(.*)",
