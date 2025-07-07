@@ -7,7 +7,7 @@ import httpx
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-from app.core.config import settings
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 

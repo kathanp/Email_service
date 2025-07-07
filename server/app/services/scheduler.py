@@ -1,6 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from app.services.email_service import EmailService
+from .email_service import EmailService
 
 class EmailScheduler:
     def __init__(self):

@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Optional
 from datetime import datetime
 from botocore.exceptions import ClientError, BotoCoreError
-from app.core.config import settings
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 

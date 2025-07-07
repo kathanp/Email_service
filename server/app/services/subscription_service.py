@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, Optional
-from app.models.subscription import SUBSCRIPTION_PLANS, SubscriptionPlan
-from app.db.mongodb import MongoDB
+from ..models.subscription import SUBSCRIPTION_PLANS, SubscriptionPlan
+from ..db.mongodb import MongoDB
 import logging
 
 logger = logging.getLogger(__name__)

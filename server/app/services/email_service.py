@@ -2,7 +2,7 @@ from datetime import datetime
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from app.config import settings
+from ..core.config import settings
 
 class EmailService:
     async def send_email(self, to_email: str, subject: str, body: str):
