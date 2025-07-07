@@ -1,5 +1,16 @@
 // Set API base URL: use environment variable in production, fallback to current domain for development
-const API_BASE_URL = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : window.location.origin);
+const getBaseUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  if (window.location.hostname === 'localhost') {
+    return 'http://localhost:8000';
+  }
+  // Remove trailing slash if present to avoid double slashes
+  return window.location.origin.replace(/\/$/, '');
+};
+
+const API_BASE_URL = getBaseUrl();
 
 export const API_ENDPOINTS = {
   AUTH: `${API_BASE_URL}/api/auth`,
