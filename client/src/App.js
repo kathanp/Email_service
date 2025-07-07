@@ -14,19 +14,13 @@ import SubscriptionSummary from './pages/SubscriptionSummary';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 
-// Component to handle root path - show auth page for guests, redirect to dashboard for authenticated users
-const RootRoute = () => {
-  const isAuthenticated = localStorage.getItem("token");
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <AuthPage />;
-};
-
 function App() {
   return (
     <AppProvider>
       <Router>
         <Routes>
           {/* Root path - shows auth page for guests, redirects to dashboard for authenticated users */}
-          <Route path="/" element={<RootRoute />} />
+          <Route path="/" element={<AuthPage />} />
           
           {/* Auth routes */}
           <Route path="/login" element={<AuthPage />} />
