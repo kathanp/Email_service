@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth, stats, files, templates, senders
-from api.v1 import campaigns, google_auth, subscriptions
-from core.config import settings
-from db.mongodb import MongoDB
+from .routes import auth, stats, files, templates, senders
+from .api.v1 import campaigns, google_auth, subscriptions
+from .core.config import settings
+from .db.mongodb import MongoDB
 import logging
 
 # Configure logging
