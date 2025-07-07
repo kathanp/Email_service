@@ -677,4 +677,9 @@ async def test_imports():
     return {
         "import_tests": results,
         "timestamp": datetime.utcnow().isoformat()
-    } 
+    }
+
+# Export the app for Vercel
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
