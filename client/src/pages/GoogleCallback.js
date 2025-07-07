@@ -26,20 +26,19 @@ function GoogleCallback() {
         if (response.ok) {
           const data = await response.json();
           
-          // For now, we'll create a mock user session since the backend returns success
-          // In a real implementation, the backend would return user data and token
-          const mockUser = {
+          // Use the data from backend response if available, otherwise create mock data
+          const userData = data.user || {
             id: 'google_user_1',
             email: 'google.user@example.com',
             username: 'Google User',
             full_name: 'Google User'
           };
           
-          const mockToken = 'google_token_' + Date.now();
+          const token = data.access_token || 'google_token_' + Date.now();
           
           // Store the user data and token
-          localStorage.setItem('token', mockToken);
-          localStorage.setItem('user', JSON.stringify(mockUser));
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(userData));
           
           // Redirect to dashboard
           navigate('/dashboard');
