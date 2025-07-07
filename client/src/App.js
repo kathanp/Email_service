@@ -4,7 +4,6 @@ import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import AuthPage from './pages/Login';
 import GoogleCallback from './pages/GoogleCallback';
-import SetToken from './pages/SetToken';
 import Dashboard from './pages/Dashboard';
 import AutonomousCampaign from './pages/CustomerManager';
 import EmailTemplates from './pages/EmailTemplates';
@@ -27,7 +26,6 @@ function App() {
           <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
           <Route path="/auth/callback" element={<GoogleCallback />} />
-          <Route path="/set-token" element={<SetToken />} />
           <Route path="/google-login-success" element={<AuthPage />} />
           
           {/* Protected routes - require authentication */}

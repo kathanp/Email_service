@@ -64,8 +64,12 @@ async def register(request: Request):
                 detail="Email already registered"
             )
         
-        user_id = f"user_{len(users_db) + 1}"
+        # Create unique UID for the user
+        uid = f"user_{len(users_db) + 1}_{hash(email) % 100000}"
+        user_id = uid
+        
         users_db[email] = {
+            "uid": uid,
             "id": user_id,
             "email": email,
             "username": username,
@@ -74,13 +78,14 @@ async def register(request: Request):
             "created_at": datetime.utcnow()
         }
         
-        # Create access token for automatic login
-        access_token = create_access_token(data={"sub": email})
+        # Create access token with UID for automatic login
+        access_token = create_access_token(data={"sub": email, "uid": uid})
         
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "user": {
+                "uid": uid,
                 "id": user_id,
                 "email": email,
                 "username": username,
@@ -117,12 +122,13 @@ async def login(request: Request):
             )
         
         user = users_db[email]
-        access_token = create_access_token(data={"sub": email})
+        access_token = create_access_token(data={"sub": email, "uid": user.get("uid", user["id"])})
         
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "user": {
+                "uid": user.get("uid", user["id"]),
                 "id": user["id"],
                 "email": user["email"],
                 "username": user["username"],
@@ -165,21 +171,6 @@ async def get_google_login_url():
             detail=f"Google OAuth failed: {str(e)}"
         )
 
-@app.get("/set-token")
-async def set_token():
-    """Set token and redirect to clean dashboard."""
-    try:
-        # This route will be handled by the frontend React app
-        # The frontend will extract the token from URL and store it
-        # then redirect to the clean dashboard
-        return {"message": "Token set route - handled by React app"}
-    except Exception as e:
-        logger.error(f"Set token error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Set token failed: {str(e)}"
-        )
-
 @app.get("/api/v1/google-auth/callback")
 async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
@@ -188,34 +179,36 @@ async def google_auth_callback(code: str):
         # For now, we'll create a mock user based on the code
         # In production, you would exchange the code for user info from Google
         
-        # Create a unique user ID based on the code (in real app, use Google user info)
+        # Create a unique UID based on the code
+        uid = f"google_{hash(code) % 100000}"
         user_email = f"google_user_{hash(code) % 10000}@example.com"
         
-        # Create user data
+        # Create user data with UID
         user_data = {
-            "id": f"google_user_{hash(code) % 10000}",
+            "uid": uid,
+            "id": uid,
             "email": user_email,
             "username": "Google User",
             "full_name": "Google User"
         }
         
-        # Create proper JWT access token
-        access_token = create_access_token(data={"sub": user_email})
+        # Create proper JWT access token with UID
+        access_token = create_access_token(data={"sub": user_email, "uid": uid})
         
         # Store user in database (if not already exists)
         if user_email not in users_db:
             users_db[user_email] = {
-                "id": user_data["id"],
+                "uid": uid,
+                "id": uid,
                 "email": user_data["email"],
                 "username": user_data["username"],
                 "full_name": user_data["full_name"],
                 "created_at": datetime.utcnow()
             }
         
-        # For now, we'll redirect to a special endpoint that will set the token
-        # and then redirect to the clean dashboard
-        token_set_url = f"https://www.mailsflow.net/set-token?token={access_token}&user={user_email}"
-        return RedirectResponse(url=token_set_url)
+        # Redirect directly to clean dashboard URL with token for frontend to store
+        dashboard_url = f"https://www.mailsflow.net/dashboard?auth_token={access_token}&uid={uid}"
+        return RedirectResponse(url=dashboard_url)
         
     except Exception as e:
         logger.error(f"Google callback error: {str(e)}")
