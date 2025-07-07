@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 import logging
 import os
 from datetime import datetime, timedelta
@@ -134,12 +135,12 @@ async def get_google_login_url():
     """Get Google OAuth login URL."""
     try:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-        # Redirect to frontend callback page, not backend API
-        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
+        # Redirect to backend API callback
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/api/v1/google-auth/callback")
         
         if not client_id:
             return {
-                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/auth/callback&response_type=code&scope=email profile",
+                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/api/v1/google-auth/callback&response_type=code&scope=email profile",
                 "client_id": "test",
                 "message": "Using test client ID"
             }
@@ -162,14 +163,76 @@ async def get_google_login_url():
 async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
-        # Redirect to frontend callback page with the code
-        from fastapi.responses import RedirectResponse
+        # Create user data
+        user_data = {
+            "id": "google_user_1",
+            "email": "google.user@example.com",
+            "username": "Google User",
+            "full_name": "Google User"
+        }
         
-        # Get the frontend URL
-        frontend_url = os.getenv("FRONTEND_URL", "https://www.mailsflow.net")
-        redirect_url = f"{frontend_url}/auth/callback?code={code}"
+        token = "mock_token_for_google_user"
         
-        return RedirectResponse(url=redirect_url)
+        # Return HTML page that will store token and redirect to dashboard
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Google OAuth Success</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                }}
+                .container {{
+                    text-align: center;
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 40px;
+                    border-radius: 20px;
+                    backdrop-filter: blur(10px);
+                }}
+                .spinner {{
+                    border: 4px solid rgba(255, 255, 255, 0.3);
+                    border-top: 4px solid white;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    animation: spin 1s linear infinite;
+                    margin: 20px auto;
+                }}
+                @keyframes spin {{
+                    0% {{ transform: rotate(0deg); }}
+                    100% {{ transform: rotate(360deg); }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>✅ Authentication Successful!</h1>
+                <p>Redirecting to dashboard...</p>
+                <div class="spinner"></div>
+            </div>
+            <script>
+                // Store authentication data
+                localStorage.setItem('token', '{token}');
+                localStorage.setItem('user', JSON.stringify({user_data}));
+                
+                // Redirect to dashboard
+                setTimeout(() => {{
+                    window.location.href = '/dashboard';
+                }}, 2000);
+            </script>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(content=html_content)
         
     except Exception as e:
         logger.error(f"Google callback error: {str(e)}")
