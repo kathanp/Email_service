@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from typing import List
 from ..models.customer import CustomerCreate, Customer
+from ..models.user import User
 from ..services.customer_service import CustomerService
-from ..utils.security import get_current_user
+from ..api.deps import get_current_user
+from ..db.mongodb import MongoDB
 
 router = APIRouter()
-customer_service = CustomerService()
+
+# Initialize services
+mongodb = MongoDB()
+customer_service = CustomerService(mongodb)
 
 @router.post("/", response_model=Customer)
 async def create_customer(
