@@ -148,22 +148,30 @@ async def login(request: Request):
 async def get_session(session_id: str):
     """Get session data."""
     try:
+        logger.info(f"Getting session: {session_id}")
+        logger.info(f"Available sessions: {list(sessions_db.keys())}")
+        
         if session_id not in sessions_db:
+            logger.error(f"Session {session_id} not found")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
+                detail=f"Session {session_id} not found"
             )
         
         session = sessions_db[session_id]
+        logger.info(f"Session found: {session}")
+        
         user_email = session["user_email"]
         
         if user_email not in users_db:
+            logger.error(f"User {user_email} not found")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                detail=f"User {user_email} not found"
             )
         
         user = users_db[user_email]
+        logger.info(f"User found: {user}")
         
         return {
             "access_token": session["access_token"],
@@ -177,6 +185,8 @@ async def get_session(session_id: str):
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get session error: {str(e)}")
         raise HTTPException(
