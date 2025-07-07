@@ -6,10 +6,65 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+def _is_development_mode():
+    """Check if we're in development mode without database."""
+    try:
+        MongoDB.get_collection("stats")
+        return False
+    except:
+        return True
+
 @router.get("/summary")
 async def get_stats_summary():
     """Get email campaign statistics summary for dashboard."""
     try:
+        if _is_development_mode():
+            # Development mode - return mock stats
+            logger.info("Development mode: Mock stats summary")
+            now = datetime.utcnow()
+            return {
+                "totalSent": 1250,
+                "totalCustomers": 45,
+                "sentToday": 25,
+                "failedToday": 2,
+                "totalToday": 27,
+                "scheduledEmails": 0,
+                "thisWeekSent": 180,
+                "thisMonthSent": 750,
+                "totalCampaigns": 12,
+                "todayChange": 5,
+                "weekChange": 15,
+                "monthChange": 50,
+                "todaySuccessRate": 92.6,
+                "yesterdaySuccessRate": 88.9,
+                "overallSuccessRate": 94.2,
+                "lastUpdated": now,
+                "periods": {
+                    "today": {
+                        "sent": 25,
+                        "failed": 2,
+                        "total": 27,
+                        "success_rate": 92.6
+                    },
+                    "yesterday": {
+                        "sent": 20,
+                        "failed": 2,
+                        "total": 22,
+                        "success_rate": 88.9
+                    },
+                    "this_week": {
+                        "sent": 180,
+                        "failed": 12,
+                        "total": 192
+                    },
+                    "this_month": {
+                        "sent": 750,
+                        "failed": 45,
+                        "total": 795
+                    }
+                }
+            }
+
         # Get the stats collection
         stats_collection = MongoDB.get_collection("stats")
         campaigns_collection = MongoDB.get_collection("campaigns")
@@ -130,6 +185,37 @@ async def get_stats_summary():
 async def get_recent_campaigns(limit: int = 10):
     """Get recent email campaigns."""
     try:
+        if _is_development_mode():
+            # Development mode - return mock campaigns
+            logger.info("Development mode: Mock campaigns")
+            now = datetime.utcnow()
+            return [
+                {
+                    "id": "campaign_1",
+                    "name": "Welcome Campaign",
+                    "status": "completed",
+                    "total_emails": 150,
+                    "successful": 145,
+                    "failed": 5,
+                    "duration": 120,
+                    "created_at": (now - timedelta(hours=2)).isoformat(),
+                    "template_name": "Welcome Template",
+                    "file_name": "contacts.xlsx"
+                },
+                {
+                    "id": "campaign_2",
+                    "name": "Newsletter Campaign",
+                    "status": "completed",
+                    "total_emails": 200,
+                    "successful": 190,
+                    "failed": 10,
+                    "duration": 180,
+                    "created_at": (now - timedelta(days=1)).isoformat(),
+                    "template_name": "Newsletter Template",
+                    "file_name": "subscribers.xlsx"
+                }
+            ]
+
         campaigns_collection = MongoDB.get_collection("campaigns")
         
         # Get recent campaigns sorted by creation date
@@ -162,6 +248,37 @@ async def get_recent_campaigns(limit: int = 10):
 async def get_recent_activity(limit: int = 10):
     """Get recent activity for dashboard."""
     try:
+        if _is_development_mode():
+            # Development mode - return mock activity
+            logger.info("Development mode: Mock activity")
+            now = datetime.utcnow()
+            return [
+                {
+                    "id": "activity_1",
+                    "type": "email_campaign",
+                    "message": "Email campaign sent to 150 contacts",
+                    "time": (now - timedelta(hours=2)).isoformat(),
+                    "status": "success",
+                    "details": {
+                        "emails_sent": 145,
+                        "emails_failed": 5,
+                        "success_rate": 96.7
+                    }
+                },
+                {
+                    "id": "activity_2",
+                    "type": "email_campaign",
+                    "message": "Email campaign sent to 200 contacts",
+                    "time": (now - timedelta(days=1)).isoformat(),
+                    "status": "success",
+                    "details": {
+                        "emails_sent": 190,
+                        "emails_failed": 10,
+                        "success_rate": 95.0
+                    }
+                }
+            ]
+
         campaigns_collection = MongoDB.get_collection("campaigns")
         
         # Get recent campaigns and convert to activity format
