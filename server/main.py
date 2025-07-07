@@ -226,6 +226,8 @@ async def get_google_login_url():
 async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
+        logger.info(f"Google OAuth callback received with code: {code}")
+        
         # Mock implementation - in real app, exchange code for tokens
         # For now, we'll create a mock user based on the code
         # In production, you would exchange the code for user info from Google
@@ -233,6 +235,8 @@ async def google_auth_callback(code: str):
         # Create a unique UID based on the code
         uid = f"google_{hash(code) % 100000}"
         user_email = f"google_user_{hash(code) % 10000}@example.com"
+        
+        logger.info(f"Created UID: {uid}, Email: {user_email}")
         
         # Create user data with UID
         user_data = {
@@ -256,6 +260,7 @@ async def google_auth_callback(code: str):
                 "full_name": user_data["full_name"],
                 "created_at": datetime.utcnow()
             }
+            logger.info(f"User stored in database: {users_db[user_email]}")
         
         # Create a session
         session_id = f"session_{hash(code) % 100000}"
@@ -266,8 +271,13 @@ async def google_auth_callback(code: str):
             "created_at": datetime.utcnow()
         }
         
+        logger.info(f"Session created: {session_id}")
+        logger.info(f"Available sessions: {list(sessions_db.keys())}")
+        
         # Redirect to dashboard with session ID
         dashboard_url = f"https://www.mailsflow.net/dashboard?session={session_id}"
+        logger.info(f"Redirecting to: {dashboard_url}")
+        
         return RedirectResponse(url=dashboard_url)
         
     except Exception as e:
