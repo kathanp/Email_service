@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import UsageStats from '../components/UsageStats';
 import './Dashboard.css';
 
 function Dashboard() {
   const [user, setUser] = useState(null);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { 
     stats, 
@@ -13,12 +14,40 @@ function Dashboard() {
   } = useAppContext();
 
   useEffect(() => {
-    // Get user data from localStorage
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+    // Check for Google OAuth token in URL parameters
+    const token = searchParams.get('token');
+    const userEmail = searchParams.get('user');
+    
+    if (token && userEmail) {
+      console.log('Google OAuth token received, storing authentication data...');
+      
+      // Store the token
+      localStorage.setItem('token', token);
+      
+      // Create user object from email
+      const userData = {
+        id: 'google_user_1',
+        email: userEmail,
+        username: 'Google User',
+        full_name: 'Google User'
+      };
+      
+      // Store user data
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, '/dashboard');
+      
+      console.log('Authentication data stored, user logged in');
+    } else {
+      // Get user data from localStorage (normal login)
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
     }
-  }, []); // Empty dependency array to run only once on mount
+  }, [searchParams]); // Include searchParams in dependency array
 
 
 

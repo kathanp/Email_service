@@ -170,8 +170,28 @@ async def google_auth_callback(code: str):
     """Handle Google OAuth callback."""
     try:
         # Mock implementation - in real app, exchange code for tokens
-        # Process the authentication and redirect to frontend dashboard
-        frontend_url = "https://www.mailsflow.net/dashboard"
+        # Create mock user data for Google OAuth
+        user_data = {
+            "id": "google_user_1",
+            "email": "google.user@example.com",
+            "username": "Google User",
+            "full_name": "Google User"
+        }
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": user_data["email"]})
+        
+        # Store user in database
+        users_db[user_data["email"]] = {
+            "id": user_data["id"],
+            "email": user_data["email"],
+            "username": user_data["username"],
+            "full_name": user_data["full_name"],
+            "created_at": datetime.utcnow()
+        }
+        
+        # Redirect to frontend dashboard with token as URL parameter
+        frontend_url = f"https://www.mailsflow.net/dashboard?token={access_token}&user={user_data['email']}"
         return RedirectResponse(url=frontend_url)
         
     except Exception as e:
