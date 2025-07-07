@@ -4,10 +4,10 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from botocore.exceptions import ClientError
 from bson import ObjectId
-from app.core.config import settings
-from app.db.mongodb import MongoDB
-from app.models.sender import SenderCreate, SenderInDB, Sender
-from app.services.subscription_service import SubscriptionService
+from ..core.config import settings
+from ..db.mongodb import MongoDB
+from ..models.sender import SenderCreate, SenderInDB, Sender
+from ..services.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
 

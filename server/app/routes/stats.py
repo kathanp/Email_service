@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.db.mongodb import MongoDB
+from ..db.mongodb import MongoDB
 from datetime import datetime, timedelta
 import logging
 

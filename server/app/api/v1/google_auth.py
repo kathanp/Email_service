@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from typing import Dict, Optional
 from datetime import datetime
-from app.api.deps import get_current_user
-from app.models.user import UserResponse, GoogleUserCreate
-from app.services.google_oauth_service import GoogleOAuthService
-from app.services.auth_service import AuthService
-from app.core.security import create_access_token
+from ..deps import get_current_user
+from ...models.user import UserResponse, GoogleUserCreate
+from ...services.google_oauth_service import GoogleOAuthService
+from ...services.auth_service import AuthService
+from ...core.security import create_access_token
 import logging
 
 logger = logging.getLogger(__name__)

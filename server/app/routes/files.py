@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from typing import List, Optional
-from app.models.file import FileResponse
-from app.services.file_service import FileService
-from app.api.deps import get_current_user
-from app.models.user import UserResponse
+from ..models.file import FileResponse
+from ..services.file_service import FileService
+from ..api.deps import get_current_user
+from ..models.user import UserResponse
 
 router = APIRouter()
 

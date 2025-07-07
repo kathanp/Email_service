@@ -4,9 +4,9 @@ from typing import List, Optional, Set
 from bson import ObjectId
 import logging
 from fastapi import HTTPException, status
-from app.db.mongodb import MongoDB
-from app.models.template import TemplateCreate, TemplateUpdate, TemplateInDB, TemplateResponse
-from app.services.subscription_service import SubscriptionService
+from ..db.mongodb import MongoDB
+from ..models.template import TemplateCreate, TemplateUpdate, TemplateInDB, TemplateResponse
+from ..services.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
 

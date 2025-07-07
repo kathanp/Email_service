@@ -1,11 +1,13 @@
+import os
+import uuid
 from datetime import datetime
 from typing import List, Optional
 from bson import ObjectId
 import io
 import logging
 from fastapi import HTTPException, status, UploadFile
-from app.db.mongodb import MongoDB
-from app.models.file import FileCreate, FileUpdate, FileInDB, FileResponse
+from ..db.mongodb import MongoDB
+from ..models.file import FileCreate, FileUpdate, FileInDB, FileResponse
 
 logger = logging.getLogger(__name__)
 

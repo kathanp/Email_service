@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
-from app.models.customer import CustomerCreate, Customer
-from app.services.customer_service import CustomerService
-from app.utils.security import get_current_user
+from ..models.customer import CustomerCreate, Customer
+from ..services.customer_service import CustomerService
+from ..utils.security import get_current_user
 
 router = APIRouter()
 customer_service = CustomerService()

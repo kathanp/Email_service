@@ -3,17 +3,17 @@ from typing import List, Optional
 from datetime import datetime
 import logging
 
-from app.api.deps import get_current_user
-from app.models.user import UserResponse
-from app.models.subscription import (
+from ..deps import get_current_user
+from ...models.user import UserResponse
+from ...models.subscription import (
     SubscriptionCreate, SubscriptionUpdate, SubscriptionResponse, 
     SubscriptionPlan, BillingCycle, PaymentStatus, UsageStats, BillingInfo,
     SUBSCRIPTION_PLANS
 )
-from app.services.stripe_service import stripe_service
-from app.services.mock_subscription_service import mock_subscription_service
-from app.core.config import settings
-from app.db.mongodb import MongoDB
+from ...services.stripe_service import stripe_service
+from ...services.mock_subscription_service import mock_subscription_service
+from ...core.config import settings
+from ...db.mongodb import MongoDB
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -411,7 +411,7 @@ async def get_billing_info(current_user: UserResponse = Depends(get_current_user
 @router.get("/stripe-key")
 async def get_stripe_publishable_key():
     """Get Stripe publishable key for frontend."""
-    from app.core.config import settings
+    from ...core.config import settings
     return {"publishable_key": settings.STRIPE_PUBLISHABLE_KEY}
 
 @router.get("/payment-method")

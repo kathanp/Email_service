@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from app.api.deps import get_current_user
-from app.models.user import UserResponse
-from app.models.campaign import CampaignCreate, CampaignResponse
-from app.services.ses_manager import SESManager
-from app.services.template_service import TemplateService
-from app.db.mongodb import MongoDB
+from ..deps import get_current_user
+from ...models.user import UserResponse
+from ...models.campaign import CampaignCreate, CampaignResponse
+from ...services.ses_manager import SESManager
+from ...services.template_service import TemplateService
+from ...db.mongodb import MongoDB
 import pandas as pd
 import io
 import logging

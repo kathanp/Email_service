@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from typing import Dict, Optional
 from datetime import datetime
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.services.gmail_oauth_service import GmailOAuthService
-from app.services.auth_service import AuthService
-from app.db.mongodb import get_database
+from ..deps import get_current_user
+from ...models.user import User
+from ...services.gmail_oauth_service import GmailOAuthService
+from ...services.auth_service import AuthService
+from ...db.mongodb import get_database
 
 router = APIRouter()
 gmail_service = GmailOAuthService()

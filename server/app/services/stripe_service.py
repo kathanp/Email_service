@@ -2,8 +2,8 @@ import stripe
 import logging
 from typing import Dict, Optional, List
 from datetime import datetime, timedelta
-from app.core.config import settings
-from app.models.subscription import SubscriptionPlan, BillingCycle, PaymentStatus, SUBSCRIPTION_PLANS
+from ..core.config import settings
+from ..models.subscription import SubscriptionPlan, BillingCycle, PaymentStatus, SUBSCRIPTION_PLANS
 
 logger = logging.getLogger(__name__)
 

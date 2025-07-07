@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from app.api.deps import get_current_user
-from app.models.user import UserResponse
-from app.models.campaign import CampaignCreate, CampaignResponse
-from app.services.ses_manager import SESManager
-from app.services.template_service import TemplateService
-from app.services.sender_service import SenderService
-from app.services.subscription_service import SubscriptionService
-from app.db.mongodb import MongoDB
+from ..deps import get_current_user
+from ...models.user import UserResponse
+from ...models.campaign import CampaignCreate, CampaignResponse
+from ...services.ses_manager import SESManager
+from ...services.template_service import TemplateService
+from ...services.sender_service import SenderService
+from ...services.subscription_service import SubscriptionService
+from ...db.mongodb import MongoDB
 import pandas as pd
 import io
 import logging
@@ -441,7 +441,7 @@ async def send_mass_email(
         logger.info(f"Starting mass email campaign for {len(emails)} recipients")
         
         # Override the sender email for this campaign
-        ses_manager.sender_email = user_doc["sender_email"]
+        ses_manager.sender_email = user['sender_email']
         
         results = await ses_manager.send_bulk_emails(emails, user_id=current_user.id)
         
@@ -513,13 +513,13 @@ async def send_test_email(
                 detail="No sender email configured. Please connect your Google account or set a sender email."
             )
         
-        # Use user's sender email if available, otherwise use AWS SES default
-        if user_doc and user_doc.get('sender_email'):
-            ses_manager.sender_email = user_doc['sender_email']
+        # Get user's sender email if available, otherwise use AWS SES default
+        if user and user.get('sender_email'):
+            ses_manager.sender_email = user['sender_email']
         else:
             # Use AWS SES default sender email
-            from app.core.config import settings
-            ses_manager.sender_email = settings.DEFAULT_SENDER_EMAIL
+            from ...core.config import settings
+            ses_manager.sender_email = settings.AWS_SES_SENDER_EMAIL
         
         # Send test email
         result = await ses_manager.send_email(

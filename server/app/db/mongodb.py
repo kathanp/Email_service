@@ -1,19 +1,19 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+import motor.motor_asyncio
 from pymongo.errors import ConnectionFailure
 import logging
-from app.core.config import settings
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class MongoDB:
-    client: AsyncIOMotorClient = None
+    client: motor.motor_asyncio.AsyncIOMotorClient = None
     database = None
 
     @classmethod
     async def connect_to_mongo(cls):
         """Create database connection."""
         try:
-            cls.client = AsyncIOMotorClient(settings.MONGODB_URL)
+            cls.client = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGODB_URL)
             cls.database = cls.client[settings.DATABASE_NAME]
             
             # Test the connection

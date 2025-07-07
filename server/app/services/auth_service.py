@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 from bson import ObjectId
-from app.db.mongodb import MongoDB
-from app.models.user import UserCreate, UserInDB, UserResponse, UserLogin, GoogleUserCreate
-from app.core.security import get_password_hash, verify_password, create_access_token
+from ..db.mongodb import MongoDB
+from ..models.user import UserCreate, UserInDB, UserResponse, UserLogin, GoogleUserCreate
+from ..core.security import get_password_hash, verify_password, create_access_token
 from fastapi import HTTPException, status
 
 class AuthService:
@@ -57,7 +57,11 @@ class AuthService:
                 full_name=created_user.get("full_name"),
                 role=created_user["role"],
                 created_at=created_user["created_at"],
-                is_active=created_user["is_active"]
+                last_login=created_user.get("last_login"),
+                is_active=created_user["is_active"],
+                google_id=created_user.get("google_id"),
+                google_name=created_user.get("google_name"),
+                sender_email=created_user.get("sender_email")
             )
 
         except HTTPException:
@@ -65,7 +69,7 @@ class AuthService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error creating user: {str(e)}"
+                detail=f"Error creating Google user: {str(e)}"
             )
 
     async def register_google_user(self, user_data: GoogleUserCreate) -> UserResponse:

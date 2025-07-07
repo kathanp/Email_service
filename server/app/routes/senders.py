@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from app.models.sender import SenderCreate, Sender
-from app.services.sender_service import SenderService
-from app.api.deps import get_current_user
-from app.models.user import UserResponse
+from ..models.sender import SenderCreate, Sender
+from ..services.sender_service import SenderService
+from ..api.deps import get_current_user
+from ..models.user import UserResponse
 
 router = APIRouter(tags=["senders"])
 

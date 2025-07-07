@@ -2,12 +2,14 @@
 Mock subscription service for development without Stripe
 """
 
+import uuid
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 from bson import ObjectId
-from app.db.mongodb import MongoDB
-from app.models.subscription import SubscriptionPlan, BillingCycle, PaymentStatus, SUBSCRIPTION_PLANS
+from fastapi import HTTPException
+from ..db.mongodb import MongoDB
+from ..models.subscription import SubscriptionPlan, BillingCycle, PaymentStatus, SUBSCRIPTION_PLANS
 
 logger = logging.getLogger(__name__)
 

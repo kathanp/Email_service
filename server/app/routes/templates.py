@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional
-from app.models.template import TemplateCreate, TemplateUpdate, TemplateResponse
-from app.services.template_service import TemplateService
-from app.api.deps import get_current_user
-from app.models.user import UserResponse
+from ..models.template import TemplateCreate, TemplateUpdate, TemplateResponse
+from ..services.template_service import TemplateService
+from ..api.deps import get_current_user
+from ..models.user import UserResponse
 
 router = APIRouter()
 
