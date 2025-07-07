@@ -19,21 +19,31 @@ function Dashboard() {
     const sessionId = searchParams.get('session');
     
     console.log('Dashboard useEffect - sessionId:', sessionId);
+    console.log('Current URL:', window.location.href);
     
     if (sessionId) {
       console.log('Google OAuth session received, fetching authentication data...');
       
       // Fetch session data from backend
       fetch(`/api/auth/session/${sessionId}`)
-        .then(response => response.json())
+        .then(response => {
+          console.log('Session response status:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then(data => {
           console.log('Session data received:', data);
           
           // Store the token
           localStorage.setItem('token', data.access_token);
+          console.log('Token stored:', data.access_token);
           
           // Store user data
           localStorage.setItem('user', JSON.stringify(data.user));
+          console.log('User data stored:', data.user);
+          
           setUser(data.user);
           
           // Force URL cleanup immediately
@@ -44,10 +54,14 @@ function Dashboard() {
         })
         .catch(error => {
           console.error('Error fetching session:', error);
+          // If session fetch fails, try to redirect to login
+          alert('Google login failed. Please try again.');
+          window.location.href = '/';
         });
     } else {
       // Get user data from localStorage (normal login)
       const userData = localStorage.getItem('user');
+      console.log('No session, checking localStorage for user data:', userData);
       if (userData) {
         setUser(JSON.parse(userData));
       }
