@@ -144,6 +144,65 @@ async def login(request: Request):
             detail=f"Login failed: {str(e)}"
         )
 
+@app.get("/api/auth/me")
+async def get_current_user(request: Request):
+    """Get current user information."""
+    try:
+        # Get token from Authorization header
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header"
+            )
+        
+        token = auth_header.split(" ")[1]
+        
+        # Decode the token
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if not email:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token"
+                )
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired"
+            )
+        except jwt.JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Get user from database
+        if email not in users_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        user = users_db[email]
+        return {
+            "uid": user.get("uid", user["id"]),
+            "id": user["id"],
+            "email": user["email"],
+            "username": user["username"],
+            "full_name": user["full_name"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get current user error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get current user: {str(e)}"
+        )
+
 @app.get("/api/auth/session/{session_id}")
 async def get_session(session_id: str):
     """Get session data."""
@@ -195,15 +254,21 @@ async def get_session(session_id: str):
         )
 
 @app.get("/api/v1/google-auth/login-url")
-async def get_google_login_url():
+async def get_google_login_url(request: Request):
     """Get Google OAuth login URL."""
     try:
         client_id = os.getenv("GOOGLE_CLIENT_ID", "")
-        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
+        
+        # Use localhost for local development, production URL for production
+        host = request.headers.get("host", "")
+        if "localhost" in host or "127.0.0.1" in host:
+            redirect_uri = "http://localhost:8000/api/v1/google-auth/callback"
+        else:
+            redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/api/v1/google-auth/callback")
         
         if not client_id:
             return {
-                "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=https://www.mailsflow.net/auth/callback&response_type=code&scope=email profile",
+                "auth_url": f"https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri={redirect_uri}&response_type=code&scope=email profile",
                 "client_id": "test",
                 "message": "Using test client ID"
             }
@@ -223,7 +288,7 @@ async def get_google_login_url():
         )
 
 @app.get("/api/v1/google-auth/callback")
-async def google_auth_callback(code: str):
+async def google_auth_callback(code: str, request: Request):
     """Handle Google OAuth callback."""
     try:
         logger.info(f"Google OAuth callback received with code: {code}")
@@ -275,7 +340,13 @@ async def google_auth_callback(code: str):
         logger.info(f"Available sessions: {list(sessions_db.keys())}")
         
         # Redirect to dashboard with session ID
-        dashboard_url = f"https://www.mailsflow.net/dashboard?session={session_id}"
+        # Use localhost for local development, production URL for production
+        host = request.headers.get("host", "")
+        if "localhost" in host or "127.0.0.1" in host:
+            dashboard_url = f"http://localhost:3000/dashboard?session={session_id}"
+        else:
+            dashboard_url = f"https://www.mailsflow.net/dashboard?session={session_id}"
+        
         logger.info(f"Redirecting to: {dashboard_url}")
         
         return RedirectResponse(url=dashboard_url)
