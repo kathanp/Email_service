@@ -501,6 +501,35 @@ async def delete_template(template_id: str):
             detail=f"Failed to delete template: {str(e)}"
         )
 
+@app.post("/api/templates/{template_id}/set-default")
+async def set_default_template(template_id: str):
+    """Set a template as default."""
+    try:
+        if template_id not in templates_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        
+        # Set all templates as non-default first
+        for template in templates_db.values():
+            template["is_default"] = False
+        
+        # Set the specified template as default
+        templates_db[template_id]["is_default"] = True
+        templates_db[template_id]["updated_at"] = datetime.utcnow().isoformat()
+        
+        return {
+            "message": "Default template updated successfully",
+            "template_id": template_id
+        }
+    except Exception as e:
+        logger.error(f"Set default template error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to set default template: {str(e)}"
+        )
+
 # ===== CUSTOMERS ENDPOINTS =====
 
 @app.get("/api/customers")
@@ -711,6 +740,59 @@ async def delete_sender(sender_id: str):
             detail=f"Failed to delete sender: {str(e)}"
         )
 
+@app.post("/api/senders/{sender_id}/set-default")
+async def set_default_sender(sender_id: str):
+    """Set a sender as default."""
+    try:
+        if sender_id not in senders_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sender not found"
+            )
+        
+        # Set all senders as non-default first
+        for sender in senders_db.values():
+            sender["is_default"] = False
+        
+        # Set the specified sender as default
+        senders_db[sender_id]["is_default"] = True
+        senders_db[sender_id]["updated_at"] = datetime.utcnow().isoformat()
+        
+        return {
+            "message": "Default sender updated successfully",
+            "sender_id": sender_id
+        }
+    except Exception as e:
+        logger.error(f"Set default sender error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to set default sender: {str(e)}"
+        )
+
+@app.post("/api/senders/{sender_id}/resend-verification")
+async def resend_verification(sender_id: str):
+    """Resend verification email to sender."""
+    try:
+        if sender_id not in senders_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sender not found"
+            )
+        
+        # Mock verification email sent
+        senders_db[sender_id]["verification_sent_at"] = datetime.utcnow().isoformat()
+        
+        return {
+            "message": "Verification email sent successfully",
+            "sender_id": sender_id
+        }
+    except Exception as e:
+        logger.error(f"Resend verification error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resend verification: {str(e)}"
+        )
+
 # ===== CAMPAIGNS ENDPOINTS =====
 
 @app.get("/api/campaigns")
@@ -846,6 +928,73 @@ async def send_campaign(campaign_id: str):
             detail=f"Failed to send campaign: {str(e)}"
         )
 
+@app.post("/api/campaigns/validate-template")
+async def validate_template(request: Request):
+    """Validate a campaign template."""
+    try:
+        body = await request.json()
+        template_content = body.get("template_content", "")
+        
+        # Mock validation
+        is_valid = len(template_content) > 0
+        
+        return {
+            "is_valid": is_valid,
+            "message": "Template is valid" if is_valid else "Template is empty"
+        }
+    except Exception as e:
+        logger.error(f"Validate template error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate template: {str(e)}"
+        )
+
+@app.post("/api/campaigns/preview")
+async def preview_campaign(request: Request):
+    """Preview a campaign."""
+    try:
+        body = await request.json()
+        
+        return {
+            "preview": {
+                "subject": body.get("subject", "Campaign Subject"),
+                "content": body.get("content", "Campaign content preview..."),
+                "recipient_count": body.get("recipient_count", 0)
+            }
+        }
+    except Exception as e:
+        logger.error(f"Preview campaign error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview campaign: {str(e)}"
+        )
+
+@app.get("/api/campaigns/{campaign_id}/status")
+async def get_campaign_status(campaign_id: str):
+    """Get campaign status."""
+    try:
+        if campaign_id not in campaigns_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Campaign not found"
+            )
+        
+        campaign = campaigns_db[campaign_id]
+        
+        return {
+            "campaign_id": campaign_id,
+            "status": campaign.get("status", "draft"),
+            "progress": campaign.get("progress", 0),
+            "sent_count": campaign.get("sent_count", 0),
+            "total_count": campaign.get("total_count", 0)
+        }
+    except Exception as e:
+        logger.error(f"Get campaign status error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get campaign status: {str(e)}"
+        )
+
 # ===== FILES ENDPOINTS =====
 
 @app.get("/api/files")
@@ -925,6 +1074,85 @@ async def delete_file(file_id: str):
             detail=f"Failed to delete file: {str(e)}"
         )
 
+@app.post("/api/files/upload")
+async def upload_file(request: Request):
+    """Upload a file."""
+    try:
+        # For now, return a mock response since we don't have file storage set up
+        file_id = f"file_{len(files_db) + 1}"
+        
+        file_record = {
+            "id": file_id,
+            "name": "uploaded_file.xlsx",
+            "type": "excel",
+            "size": 1024,
+            "status": "uploaded",
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        files_db[file_id] = file_record
+        
+        return file_record
+    except Exception as e:
+        logger.error(f"Upload file error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file: {str(e)}"
+        )
+
+@app.post("/api/files/{file_id}/process")
+async def process_file(file_id: str):
+    """Process a file."""
+    try:
+        if file_id not in files_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+        
+        # Update file status to processed
+        files_db[file_id]["status"] = "processed"
+        files_db[file_id]["processed_at"] = datetime.utcnow().isoformat()
+        
+        return {
+            "message": "File processed successfully",
+            "total_contacts": 150,
+            "file_id": file_id
+        }
+    except Exception as e:
+        logger.error(f"Process file error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process file: {str(e)}"
+        )
+
+@app.get("/api/files/{file_id}/preview")
+async def preview_file(file_id: str):
+    """Preview a file."""
+    try:
+        if file_id not in files_db:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+        
+        # Return mock preview data
+        return {
+            "file_id": file_id,
+            "preview_data": [
+                {"email": "john@example.com", "name": "John Doe"},
+                {"email": "jane@example.com", "name": "Jane Smith"},
+                {"email": "bob@example.com", "name": "Bob Johnson"}
+            ],
+            "total_rows": 3
+        }
+    except Exception as e:
+        logger.error(f"Preview file error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to preview file: {str(e)}"
+        )
+
 # ===== SUBSCRIPTIONS ENDPOINTS =====
 
 @app.get("/api/subscriptions")
@@ -959,6 +1187,119 @@ async def create_subscription(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create subscription: {str(e)}"
+        )
+
+@app.get("/api/subscriptions/current")
+async def get_current_subscription():
+    """Get current subscription."""
+    try:
+        # Mock subscription data
+        return {
+            "id": "sub_1",
+            "plan": "basic",
+            "status": "active",
+            "billing_cycle": "monthly",
+            "current_period_start": "2024-01-01T00:00:00Z",
+            "current_period_end": "2024-02-01T00:00:00Z",
+            "created_at": "2024-01-01T00:00:00Z"
+        }
+    except Exception as e:
+        logger.error(f"Get current subscription error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get current subscription: {str(e)}"
+        )
+
+@app.get("/api/subscriptions/usage")
+async def get_usage_stats():
+    """Get usage statistics."""
+    try:
+        # Mock usage data
+        return {
+            "emails_sent_this_month": 150,
+            "emails_sent_total": 500,
+            "senders_used": 2,
+            "templates_created": 5,
+            "campaigns_created": 3
+        }
+    except Exception as e:
+        logger.error(f"Get usage stats error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get usage stats: {str(e)}"
+        )
+
+@app.get("/api/subscriptions/plans")
+async def get_subscription_plans():
+    """Get available subscription plans."""
+    try:
+        return {
+            "plans": [
+                {
+                    "id": "basic",
+                    "name": "Basic",
+                    "price": 9.99,
+                    "billing_cycle": "monthly",
+                    "features": ["1000 emails/month", "5 templates", "2 senders"]
+                },
+                {
+                    "id": "pro",
+                    "name": "Professional",
+                    "price": 29.99,
+                    "billing_cycle": "monthly",
+                    "features": ["10000 emails/month", "Unlimited templates", "10 senders"]
+                },
+                {
+                    "id": "enterprise",
+                    "name": "Enterprise",
+                    "price": 99.99,
+                    "billing_cycle": "monthly",
+                    "features": ["Unlimited emails", "Unlimited templates", "Unlimited senders"]
+                }
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Get subscription plans error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get subscription plans: {str(e)}"
+        )
+
+@app.post("/api/subscriptions/create")
+async def create_subscription_endpoint(request: Request):
+    """Create a new subscription."""
+    try:
+        body = await request.json()
+        plan_id = body.get("plan", "basic")
+        billing_cycle = body.get("billing_cycle", "monthly")
+        
+        return {
+            "id": "sub_1",
+            "plan": plan_id,
+            "status": "active",
+            "billing_cycle": billing_cycle,
+            "created_at": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Create subscription error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create subscription: {str(e)}"
+        )
+
+@app.get("/api/subscriptions/stripe-key")
+async def get_stripe_key():
+    """Get Stripe publishable key."""
+    try:
+        # Mock Stripe key - in production this would be from environment variables
+        return {
+            "publishable_key": "pk_test_mock_stripe_key_for_demo"
+        }
+    except Exception as e:
+        logger.error(f"Get Stripe key error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get Stripe key: {str(e)}"
         )
 
 # ===== BASIC ENDPOINTS =====
