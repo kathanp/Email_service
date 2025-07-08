@@ -21,13 +21,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Simple in-memory storage
+# Simple in-memory storage - now user-specific
 users_db = {}
-templates_db = {}
-customers_db = {}
-senders_db = {}
-campaigns_db = {}
-files_db = {}
+user_templates_db = {}  # user_id -> templates
+user_customers_db = {}  # user_id -> customers  
+user_senders_db = {}    # user_id -> senders
+user_campaigns_db = {}  # user_id -> campaigns
+user_files_db = {}      # user_id -> files
+user_subscriptions_db = {}  # user_id -> subscriptions
+user_usage_db = {}      # user_id -> usage stats
 sessions_db = {}  # Add session storage
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
@@ -40,6 +42,71 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def get_user_from_token(request: Request):
+    """Extract user from JWT token."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header"
+        )
+    
+    token = auth_header.split(" ")[1]
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        uid = payload.get("uid")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        return email, uid
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+def get_user_data(user_id: str):
+    """Get or create user-specific data structures."""
+    if user_id not in user_templates_db:
+        user_templates_db[user_id] = {}
+    if user_id not in user_customers_db:
+        user_customers_db[user_id] = {}
+    if user_id not in user_senders_db:
+        user_senders_db[user_id] = {}
+    if user_id not in user_campaigns_db:
+        user_campaigns_db[user_id] = {}
+    if user_id not in user_files_db:
+        user_files_db[user_id] = {}
+    if user_id not in user_subscriptions_db:
+        user_subscriptions_db[user_id] = {}
+    if user_id not in user_usage_db:
+        user_usage_db[user_id] = {
+            "emails_sent_this_month": 0,
+            "emails_sent_total": 0,
+            "senders_used": 0,
+            "templates_created": 0,
+            "campaigns_created": 0
+        }
+    
+    return {
+        "templates": user_templates_db[user_id],
+        "customers": user_customers_db[user_id],
+        "senders": user_senders_db[user_id],
+        "campaigns": user_campaigns_db[user_id],
+        "files": user_files_db[user_id],
+        "subscriptions": user_subscriptions_db[user_id],
+        "usage": user_usage_db[user_id]
+    }
 
 # ===== AUTHENTICATION ENDPOINTS =====
 
@@ -361,36 +428,51 @@ async def google_auth_callback(code: str, request: Request):
 # ===== STATS ENDPOINTS =====
 
 @app.get("/api/stats/overview")
-async def get_stats_overview():
-    """Get overview statistics."""
+async def get_stats_overview(request: Request):
+    """Get overview statistics for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         return {
-            "total_campaigns": len(campaigns_db),
-            "total_customers": len(customers_db),
-            "total_templates": len(templates_db),
-            "total_senders": len(senders_db),
-            "total_files": len(files_db),
-            "total_users": len(users_db)
+            "total_campaigns": len(user_data["campaigns"]),
+            "total_customers": len(user_data["customers"]),
+            "total_templates": len(user_data["templates"]),
+            "total_senders": len(user_data["senders"]),
+            "total_files": len(user_data["files"]),
+            "total_users": 1  # Current user only
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Stats overview error: {str(e)}")
+        logger.error(f"Get stats overview error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get stats: {str(e)}"
+            detail=f"Failed to get stats overview: {str(e)}"
         )
 
 @app.get("/api/stats/campaigns")
-async def get_campaign_stats():
-    """Get campaign statistics."""
+async def get_campaign_stats(request: Request):
+    """Get campaign statistics for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        campaigns = user_data["campaigns"]
+        total_campaigns = len(campaigns)
+        sent_campaigns = len([c for c in campaigns.values() if c.get("status") == "sent"])
+        draft_campaigns = len([c for c in campaigns.values() if c.get("status") == "draft"])
+        
         return {
-            "total_campaigns": len(campaigns_db),
-            "active_campaigns": len([c for c in campaigns_db.values() if c.get("status") == "active"]),
-            "completed_campaigns": len([c for c in campaigns_db.values() if c.get("status") == "completed"]),
-            "draft_campaigns": len([c for c in campaigns_db.values() if c.get("status") == "draft"])
+            "total_campaigns": total_campaigns,
+            "sent_campaigns": sent_campaigns,
+            "draft_campaigns": draft_campaigns,
+            "campaigns": list(campaigns.values())
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Campaign stats error: {str(e)}")
+        logger.error(f"Get campaign stats error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get campaign stats: {str(e)}"
@@ -399,13 +481,18 @@ async def get_campaign_stats():
 # ===== TEMPLATES ENDPOINTS =====
 
 @app.get("/api/templates")
-async def get_templates():
-    """Get all email templates."""
+async def get_templates(request: Request):
+    """Get all templates for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         return {
-            "templates": list(templates_db.values()),
-            "total": len(templates_db)
+            "templates": list(user_data["templates"].values()),
+            "total": len(user_data["templates"])
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get templates error: {str(e)}")
         raise HTTPException(
@@ -415,23 +502,32 @@ async def get_templates():
 
 @app.post("/api/templates")
 async def create_template(request: Request):
-    """Create a new email template."""
+    """Create a new template for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         body = await request.json()
-        template_id = f"template_{len(templates_db) + 1}"
+        template_id = f"template_{len(user_data['templates']) + 1}_{uid}"
         
         template = {
             "id": template_id,
             "name": body.get("name", ""),
             "subject": body.get("subject", ""),
             "content": body.get("content", ""),
+            "is_default": body.get("is_default", False),
             "created_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
+            "user_id": uid
         }
         
-        templates_db[template_id] = template
+        user_data["templates"][template_id] = template
+        
+        # Update usage stats
+        user_data["usage"]["templates_created"] += 1
         
         return template
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create template error: {str(e)}")
         raise HTTPException(
@@ -440,15 +536,20 @@ async def create_template(request: Request):
         )
 
 @app.get("/api/templates/{template_id}")
-async def get_template(template_id: str):
-    """Get a specific template."""
+async def get_template(template_id: str, request: Request):
+    """Get a specific template for the current user."""
     try:
-        if template_id not in templates_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if template_id not in user_data["templates"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Template not found"
             )
-        return templates_db[template_id]
+        return user_data["templates"][template_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get template error: {str(e)}")
         raise HTTPException(
@@ -458,23 +559,30 @@ async def get_template(template_id: str):
 
 @app.put("/api/templates/{template_id}")
 async def update_template(template_id: str, request: Request):
-    """Update a template."""
+    """Update a template for the current user."""
     try:
-        if template_id not in templates_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if template_id not in user_data["templates"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Template not found"
             )
         
         body = await request.json()
-        templates_db[template_id].update({
-            "name": body.get("name", templates_db[template_id]["name"]),
-            "subject": body.get("subject", templates_db[template_id]["subject"]),
-            "content": body.get("content", templates_db[template_id]["content"]),
+        template = user_data["templates"][template_id]
+        
+        template.update({
+            "name": body.get("name", template["name"]),
+            "subject": body.get("subject", template["subject"]),
+            "content": body.get("content", template["content"]),
             "updated_at": datetime.utcnow().isoformat()
         })
         
-        return templates_db[template_id]
+        return template
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Update template error: {str(e)}")
         raise HTTPException(
@@ -483,17 +591,22 @@ async def update_template(template_id: str, request: Request):
         )
 
 @app.delete("/api/templates/{template_id}")
-async def delete_template(template_id: str):
-    """Delete a template."""
+async def delete_template(template_id: str, request: Request):
+    """Delete a template for the current user."""
     try:
-        if template_id not in templates_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if template_id not in user_data["templates"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Template not found"
             )
         
-        deleted_template = templates_db.pop(template_id)
+        deleted_template = user_data["templates"].pop(template_id)
         return {"message": "Template deleted successfully", "template": deleted_template}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Delete template error: {str(e)}")
         raise HTTPException(
@@ -502,27 +615,32 @@ async def delete_template(template_id: str):
         )
 
 @app.post("/api/templates/{template_id}/set-default")
-async def set_default_template(template_id: str):
-    """Set a template as default."""
+async def set_default_template(template_id: str, request: Request):
+    """Set a template as default for the current user."""
     try:
-        if template_id not in templates_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if template_id not in user_data["templates"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Template not found"
             )
         
         # Set all templates as non-default first
-        for template in templates_db.values():
+        for template in user_data["templates"].values():
             template["is_default"] = False
         
         # Set the specified template as default
-        templates_db[template_id]["is_default"] = True
-        templates_db[template_id]["updated_at"] = datetime.utcnow().isoformat()
+        user_data["templates"][template_id]["is_default"] = True
+        user_data["templates"][template_id]["updated_at"] = datetime.utcnow().isoformat()
         
         return {
             "message": "Default template updated successfully",
             "template_id": template_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Set default template error: {str(e)}")
         raise HTTPException(
@@ -533,13 +651,18 @@ async def set_default_template(template_id: str):
 # ===== CUSTOMERS ENDPOINTS =====
 
 @app.get("/api/customers")
-async def get_customers():
-    """Get all customers."""
+async def get_customers(request: Request):
+    """Get all customers for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         return {
-            "customers": list(customers_db.values()),
-            "total": len(customers_db)
+            "customers": list(user_data["customers"].values()),
+            "total": len(user_data["customers"])
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get customers error: {str(e)}")
         raise HTTPException(
@@ -638,13 +761,18 @@ async def delete_customer(customer_id: str):
 # ===== SENDERS ENDPOINTS =====
 
 @app.get("/api/senders")
-async def get_senders():
-    """Get all senders."""
+async def get_senders(request: Request):
+    """Get all senders for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         return {
-            "senders": list(senders_db.values()),
-            "total": len(senders_db)
+            "senders": list(user_data["senders"].values()),
+            "total": len(user_data["senders"])
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get senders error: {str(e)}")
         raise HTTPException(
@@ -796,13 +924,18 @@ async def resend_verification(sender_id: str):
 # ===== CAMPAIGNS ENDPOINTS =====
 
 @app.get("/api/campaigns")
-async def get_campaigns():
-    """Get all campaigns."""
+async def get_campaigns(request: Request):
+    """Get all campaigns for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         return {
-            "campaigns": list(campaigns_db.values()),
-            "total": len(campaigns_db)
+            "campaigns": list(user_data["campaigns"].values()),
+            "total": len(user_data["campaigns"])
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get campaigns error: {str(e)}")
         raise HTTPException(
@@ -998,13 +1131,18 @@ async def get_campaign_status(campaign_id: str):
 # ===== FILES ENDPOINTS =====
 
 @app.get("/api/files")
-async def get_files():
-    """Get all files."""
+async def get_files(request: Request):
+    """Get all files for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         return {
-            "files": list(files_db.values()),
-            "total": len(files_db)
+            "files": list(user_data["files"].values()),
+            "total": len(user_data["files"])
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get files error: {str(e)}")
         raise HTTPException(
@@ -1012,74 +1150,15 @@ async def get_files():
             detail=f"Failed to get files: {str(e)}"
         )
 
-@app.post("/api/files")
-async def create_file(request: Request):
-    """Create a new file record."""
-    try:
-        body = await request.json()
-        file_id = f"file_{len(files_db) + 1}"
-        
-        file_record = {
-            "id": file_id,
-            "name": body.get("name", ""),
-            "type": body.get("type", ""),
-            "size": body.get("size", 0),
-            "url": body.get("url", ""),
-            "created_at": datetime.utcnow().isoformat()
-        }
-        
-        files_db[file_id] = file_record
-        
-        return file_record
-    except Exception as e:
-        logger.error(f"Create file error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create file: {str(e)}"
-        )
-
-@app.get("/api/files/{file_id}")
-async def get_file(file_id: str):
-    """Get a specific file."""
-    try:
-        if file_id not in files_db:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="File not found"
-            )
-        return files_db[file_id]
-    except Exception as e:
-        logger.error(f"Get file error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get file: {str(e)}"
-        )
-
-@app.delete("/api/files/{file_id}")
-async def delete_file(file_id: str):
-    """Delete a file."""
-    try:
-        if file_id not in files_db:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="File not found"
-            )
-        
-        deleted_file = files_db.pop(file_id)
-        return {"message": "File deleted successfully", "file": deleted_file}
-    except Exception as e:
-        logger.error(f"Delete file error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete file: {str(e)}"
-        )
-
 @app.post("/api/files/upload")
 async def upload_file(request: Request):
-    """Upload a file."""
+    """Upload a file for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         # For now, return a mock response since we don't have file storage set up
-        file_id = f"file_{len(files_db) + 1}"
+        file_id = f"file_{len(user_data['files']) + 1}_{uid}"
         
         file_record = {
             "id": file_id,
@@ -1087,12 +1166,15 @@ async def upload_file(request: Request):
             "type": "excel",
             "size": 1024,
             "status": "uploaded",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
+            "user_id": uid
         }
         
-        files_db[file_id] = file_record
+        user_data["files"][file_id] = file_record
         
         return file_record
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Upload file error: {str(e)}")
         raise HTTPException(
@@ -1101,24 +1183,29 @@ async def upload_file(request: Request):
         )
 
 @app.post("/api/files/{file_id}/process")
-async def process_file(file_id: str):
-    """Process a file."""
+async def process_file(file_id: str, request: Request):
+    """Process a file for the current user."""
     try:
-        if file_id not in files_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if file_id not in user_data["files"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="File not found"
             )
         
         # Update file status to processed
-        files_db[file_id]["status"] = "processed"
-        files_db[file_id]["processed_at"] = datetime.utcnow().isoformat()
+        user_data["files"][file_id]["status"] = "processed"
+        user_data["files"][file_id]["processed_at"] = datetime.utcnow().isoformat()
         
         return {
             "message": "File processed successfully",
             "total_contacts": 150,
             "file_id": file_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Process file error: {str(e)}")
         raise HTTPException(
@@ -1127,10 +1214,13 @@ async def process_file(file_id: str):
         )
 
 @app.get("/api/files/{file_id}/preview")
-async def preview_file(file_id: str):
-    """Preview a file."""
+async def preview_file(file_id: str, request: Request):
+    """Preview a file for the current user."""
     try:
-        if file_id not in files_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if file_id not in user_data["files"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="File not found"
@@ -1146,6 +1236,8 @@ async def preview_file(file_id: str):
             ],
             "total_rows": 3
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Preview file error: {str(e)}")
         raise HTTPException(
@@ -1190,19 +1282,28 @@ async def create_subscription(request: Request):
         )
 
 @app.get("/api/subscriptions/current")
-async def get_current_subscription():
-    """Get current subscription."""
+async def get_current_subscription(request: Request):
+    """Get current subscription for the current user."""
     try:
-        # Mock subscription data
-        return {
-            "id": "sub_1",
-            "plan": "basic",
-            "status": "active",
-            "billing_cycle": "monthly",
-            "current_period_start": "2024-01-01T00:00:00Z",
-            "current_period_end": "2024-02-01T00:00:00Z",
-            "created_at": "2024-01-01T00:00:00Z"
-        }
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        # Return user's subscription or create a default one
+        if not user_data["subscriptions"]:
+            # Create default subscription for new user
+            user_data["subscriptions"]["current"] = {
+                "id": f"sub_{uid}",
+                "plan": "basic",
+                "status": "active",
+                "billing_cycle": "monthly",
+                "current_period_start": datetime.utcnow().isoformat(),
+                "current_period_end": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+                "created_at": datetime.utcnow().isoformat()
+            }
+        
+        return user_data["subscriptions"]["current"]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get current subscription error: {str(e)}")
         raise HTTPException(
@@ -1211,17 +1312,15 @@ async def get_current_subscription():
         )
 
 @app.get("/api/subscriptions/usage")
-async def get_usage_stats():
-    """Get usage statistics."""
+async def get_usage_stats(request: Request):
+    """Get usage statistics for the current user."""
     try:
-        # Mock usage data
-        return {
-            "emails_sent_this_month": 150,
-            "emails_sent_total": 500,
-            "senders_used": 2,
-            "templates_created": 5,
-            "campaigns_created": 3
-        }
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        return user_data["usage"]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get usage stats error: {str(e)}")
         raise HTTPException(
@@ -1267,19 +1366,29 @@ async def get_subscription_plans():
 
 @app.post("/api/subscriptions/create")
 async def create_subscription_endpoint(request: Request):
-    """Create a new subscription."""
+    """Create a new subscription for the current user."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
         body = await request.json()
         plan_id = body.get("plan", "basic")
         billing_cycle = body.get("billing_cycle", "monthly")
         
-        return {
-            "id": "sub_1",
+        # Update user's subscription
+        user_data["subscriptions"]["current"] = {
+            "id": f"sub_{uid}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
             "plan": plan_id,
             "status": "active",
             "billing_cycle": billing_cycle,
+            "current_period_start": datetime.utcnow().isoformat(),
+            "current_period_end": (datetime.utcnow() + timedelta(days=30)).isoformat(),
             "created_at": datetime.utcnow().isoformat()
         }
+        
+        return user_data["subscriptions"]["current"]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create subscription error: {str(e)}")
         raise HTTPException(
@@ -1337,11 +1446,11 @@ async def test():
     return {
         "message": "Email Bot API is working!",
         "users_count": len(users_db),
-        "templates_count": len(templates_db),
-        "customers_count": len(customers_db),
-        "senders_count": len(senders_db),
-        "campaigns_count": len(campaigns_db),
-        "files_count": len(files_db)
+        "templates_count": len(user_templates_db),
+        "customers_count": len(user_customers_db),
+        "senders_count": len(user_senders_db),
+        "campaigns_count": len(user_campaigns_db),
+        "files_count": len(user_files_db)
     }
 
 if __name__ == "__main__":
