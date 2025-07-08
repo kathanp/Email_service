@@ -43,7 +43,9 @@ async def startup_db_client():
         logger.info("Connected to MongoDB Atlas")
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {e}")
-        raise
+        logger.warning("Running in development mode without database connection")
+        logger.warning("Authentication and data persistence features will not work")
+        # Don't raise the exception - allow the app to start without database
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
@@ -60,13 +62,18 @@ async def root():
     return {
         "message": "Email Bot API",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "database": "connected" if hasattr(MongoDB, 'client') and MongoDB.client else "disconnected (development mode)"
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "database": "connected"}
+    return {
+        "status": "healthy", 
+        "database": "connected" if hasattr(MongoDB, 'client') and MongoDB.client else "disconnected",
+        "mode": "development" if not (hasattr(MongoDB, 'client') and MongoDB.client) else "production"
+    }
 
 if __name__ == "__main__":
     import uvicorn

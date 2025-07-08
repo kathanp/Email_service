@@ -12,3 +12,29 @@ build/
 # IDE
 .vscode/
 .idea/
+
+# Credentials and sensitive files
+.env
+.env.local
+.env.production
+.env.development
+*.env
+server/.env
+client/.env
+credentials.json
+token.json
+verified_senders.json
+*.log
+backend.log
+frontend.log
+
+# Vercel
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
