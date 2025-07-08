@@ -20,12 +20,16 @@ def get_auth_service():
 async def get_google_login_url():
     """Get Google OAuth login URL."""
     try:
+        # Debug: Log the redirect URI being used
+        logger.info(f"Using redirect URI: {google_service.redirect_uri}")
+        
         result = google_service.get_authorization_url()
         
         if result['success']:
             return {
                 "success": True,
-                "authorization_url": result['authorization_url']
+                "auth_url": result['authorization_url'],
+                "debug_redirect_uri": google_service.redirect_uri
             }
         else:
             raise HTTPException(
