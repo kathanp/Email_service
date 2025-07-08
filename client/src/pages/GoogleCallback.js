@@ -29,14 +29,19 @@ function GoogleCallback() {
           const data = await response.json();
           console.log('Google callback response:', data);
           
-          // Store the token and user data from backend response
-          localStorage.setItem('token', data.access_token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          
-          console.log('Stored token, redirecting to dashboard...');
-          
-          // Force redirect to dashboard
-          window.location.href = '/dashboard';
+          if (data.success && data.access_token) {
+            // Store the token and user data from backend response
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            
+            console.log('Stored token, redirecting to dashboard...');
+            
+            // Force redirect to dashboard
+            window.location.href = '/dashboard';
+          } else {
+            setError('Invalid response from server');
+            setIsLoading(false);
+          }
         } else {
           const errorData = await response.json();
           setError(errorData.detail || 'Google authentication failed');

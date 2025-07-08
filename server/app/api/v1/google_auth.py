@@ -93,11 +93,19 @@ async def google_oauth_callback(
         # Generate JWT token
         access_token = create_access_token(data={"sub": user_response.email})
         
-        # Redirect to frontend with token
-        return RedirectResponse(
-            url=f"http://localhost:3000/google-login-success?token={access_token}",
-            status_code=302
-        )
+        # Return JSON response with token and user data
+        return {
+            "success": True,
+            "access_token": access_token,
+            "user": {
+                "id": str(user_response.id),
+                "email": user_response.email,
+                "full_name": user_response.full_name,
+                "google_id": user_response.google_id,
+                "google_email": user_response.google_email,
+                "google_name": user_response.google_name
+            }
+        }
         
     except HTTPException:
         raise
