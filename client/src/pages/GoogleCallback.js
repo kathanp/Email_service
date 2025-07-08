@@ -36,8 +36,8 @@ function GoogleCallback() {
         
         console.log('Stored token, redirecting to dashboard...');
         
-        // Force redirect to dashboard
-        window.location.href = '/dashboard';
+        // Redirect to dashboard using React Router
+        navigate('/dashboard', { replace: true });
         
       } catch (error) {
         console.error('Google callback error:', error);

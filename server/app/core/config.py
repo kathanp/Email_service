@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Google OAuth Configuration
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
-    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/api/v1/google-auth/callback")
+    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
     
     # Email Configuration (Legacy SMTP - can be removed after Gmail OAuth setup)
     SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
