@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
 
 function GoogleCallback() {
@@ -12,41 +11,33 @@ function GoogleCallback() {
   useEffect(() => {
     const handleGoogleCallback = async () => {
       try {
-        const code = searchParams.get('code');
+        const token = searchParams.get('token');
+        const userEmail = searchParams.get('user');
         
-        if (!code) {
-          setError('No authorization code received');
+        if (!token) {
+          setError('No authentication token received');
           setIsLoading(false);
           return;
         }
 
-        console.log('Google callback code received:', code);
+        console.log('Google callback token received:', token);
+        console.log('User email:', userEmail);
         
-        // Call the backend to handle the Google OAuth callback
-        const response = await fetch(`${API_ENDPOINTS.GOOGLE_AUTH}/callback?code=${code}`);
+        // Store the token
+        localStorage.setItem('token', token);
         
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Google callback response:', data);
-          
-          if (data.success && data.access_token) {
-            // Store the token and user data from backend response
-            localStorage.setItem('token', data.access_token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            
-            console.log('Stored token, redirecting to dashboard...');
-            
-            // Force redirect to dashboard
-            window.location.href = '/dashboard';
-          } else {
-            setError('Invalid response from server');
-            setIsLoading(false);
-          }
-        } else {
-          const errorData = await response.json();
-          setError(errorData.detail || 'Google authentication failed');
-          setIsLoading(false);
-        }
+        // Create a basic user object with the email
+        const userData = {
+          email: userEmail,
+          full_name: userEmail.split('@')[0], // Use email prefix as name
+          google_email: userEmail
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        console.log('Stored token, redirecting to dashboard...');
+        
+        // Force redirect to dashboard
+        window.location.href = '/dashboard';
         
       } catch (error) {
         console.error('Google callback error:', error);
