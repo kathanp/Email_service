@@ -264,7 +264,7 @@ async def get_google_login_url(request: Request):
         if "localhost" in host or "127.0.0.1" in host:
             redirect_uri = "http://localhost:8000/api/v1/google-auth/callback"
         else:
-            redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/api/v1/google-auth/callback")
+            redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
         
         if not client_id:
             return {
