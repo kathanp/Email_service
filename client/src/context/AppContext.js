@@ -135,10 +135,10 @@ export const AppProvider = ({ children }) => {
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}/`);
+      const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}`);
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data);
+        setTemplates(data.templates || []); // Extract templates array from response
       }
     } catch (error) {
       console.error('Error fetching templates:', error);

@@ -14,10 +14,10 @@ function EmailTemplates() {
 
   const { 
     templates, 
-    isLoading, 
+    loading: isLoading, 
     createTemplate, 
     deleteTemplate, 
-    setTemplateAsDefault 
+    setDefaultTemplate 
   } = useAppContext();
 
   // Pre-filled generic cold email template
@@ -127,7 +127,7 @@ Template Variables to Replace:
 
   const loadDefaultTemplate = () => {
     // Find the default template from the user's saved templates
-    const defaultTemplate = templates.find(template => template.is_default);
+    const defaultTemplate = Array.isArray(templates) && templates.find(template => template.is_default);
     
     if (defaultTemplate) {
       setNewTemplate({
@@ -149,7 +149,7 @@ Template Variables to Replace:
 
   const handleSetTemplateAsDefault = async (template) => {
     try {
-      const result = await setTemplateAsDefault(template);
+      const result = await setDefaultTemplate(template.id);
       
       if (result.success) {
         // Clear the form when setting a new default template
@@ -253,10 +253,10 @@ Template Variables to Replace:
             <button 
               type="button" 
               onClick={loadDefaultTemplate} 
-              className={`load-template-button ${templates.find(t => t.is_default) ? 'has-default' : ''}`}
+              className={`load-template-button ${Array.isArray(templates) && templates.find(t => t.is_default) ? 'has-default' : ''}`}
             >
               Load Default Email Template
-              {templates.find(t => t.is_default) && <span className="default-indicator">●</span>}
+              {Array.isArray(templates) && templates.find(t => t.is_default) && <span className="default-indicator">●</span>}
             </button>
             <button 
               type="button" 
@@ -310,8 +310,8 @@ Template Variables to Replace:
         </div>
 
         <div className="templates-list-container">
-          <h3>Your Templates ({templates.length})</h3>
-          {templates.length === 0 ? (
+          <h3>Your Templates ({Array.isArray(templates) ? templates.length : 0})</h3>
+          {(!Array.isArray(templates) || templates.length === 0) ? (
             <div className="no-templates">
               <p>No templates created yet. Create your first template above!</p>
             </div>
@@ -346,7 +346,7 @@ Template Variables to Replace:
                       <strong>Subject:</strong> {template.subject}
                     </p>
                     <p className="template-body">
-                      <strong>Body:</strong> {template.body.length > 100 
+                      <strong>Body:</strong> {template.body && template.body.length > 100 
                         ? `${template.body.substring(0, 100)}...` 
                         : template.body}
                     </p>

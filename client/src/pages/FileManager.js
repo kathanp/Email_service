@@ -18,7 +18,7 @@ function FileManager() {
   const fetchFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.FILES}/`, {
+      const response = await fetch(`${API_ENDPOINTS.FILES}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -26,7 +26,7 @@ function FileManager() {
 
       if (response.ok) {
         const data = await response.json();
-        setFiles(data);
+        setFiles(data.files || []); // Extract the files array from the response
       } else {
         setError('Failed to load files');
       }
@@ -206,7 +206,7 @@ function FileManager() {
       {/* Files List */}
       <div className="files-list">
         <h2>Your Files</h2>
-        {files.length === 0 ? (
+        {!Array.isArray(files) || files.length === 0 ? (
           <div className="no-files">
             <p>No files uploaded yet. Upload your first file above.</p>
           </div>
@@ -215,16 +215,16 @@ function FileManager() {
             {files.map((file) => (
               <div key={file.id} className="file-card">
                   <div className="file-info">
-                  <h3>{file.filename}</h3>
-                  <p className="file-size">{file.size} bytes</p>
+                  <h3>{file.name || file.filename || 'Untitled File'}</h3>
+                  <p className="file-size">{file.size || 0} bytes</p>
                   <p className="file-uploaded">
-                    Uploaded: {new Date(file.uploaded_at).toLocaleDateString()}
+                    Uploaded: {new Date(file.created_at || file.uploaded_at).toLocaleDateString()}
                   </p>
                   <div className="file-status">
                     <span 
                       className={`status-badge status-${getFileStatusColor(file.status)}`}
                     >
-                      {file.status}
+                      {file.status || 'unknown'}
                     </span>
                     {file.total_contacts && (
                       <span className="contacts-count">
@@ -271,26 +271,24 @@ function FileManager() {
             </div>
             <div className="preview-body">
               <div className="preview-info">
-                <p><strong>Total Contacts:</strong> {previewData.total_contacts}</p>
-                <p><strong>Columns:</strong> {previewData.columns.join(', ')}</p>
+                <p><strong>Total Rows:</strong> {previewData.total_rows || 0}</p>
+                <p><strong>File ID:</strong> {previewData.file_id}</p>
               </div>
               <div className="preview-table">
                 <table>
                     <thead>
                       <tr>
-                      {previewData.columns.map((column, index) => (
-                        <th key={index}>{column}</th>
-                        ))}
+                        <th>Email</th>
+                        <th>Name</th>
                       </tr>
                     </thead>
                     <tbody>
-                    {previewData.sample_data.map((row, rowIndex) => (
+                    {previewData.preview_data && previewData.preview_data.map((row, rowIndex) => (
                       <tr key={rowIndex}>
-                        {previewData.columns.map((column, colIndex) => (
-                          <td key={colIndex}>{row[column] || ''}</td>
-                          ))}
-                        </tr>
-                      ))}
+                        <td>{row.email || ''}</td>
+                        <td>{row.name || ''}</td>
+                      </tr>
+                    ))}
                     </tbody>
                   </table>
                 </div>

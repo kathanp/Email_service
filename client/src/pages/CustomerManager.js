@@ -40,7 +40,7 @@ function AutonomousCampaign() {
   const fetchFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.FILES}/`, {
+      const response = await fetch(`${API_ENDPOINTS.FILES}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -48,7 +48,7 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setFiles(data);
+        setFiles(data.files || []); // Extract files array from response
       } else {
         setError('Failed to load files');
       }
@@ -60,7 +60,7 @@ function AutonomousCampaign() {
   const fetchTemplates = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.TEMPLATES}/`, {
+      const response = await fetch(`${API_ENDPOINTS.TEMPLATES}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -68,7 +68,7 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data);
+        setTemplates(data.templates || []); // Extract templates array from response
       } else {
         setError('Failed to load templates');
       }
@@ -80,7 +80,7 @@ function AutonomousCampaign() {
   const fetchSenders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SENDERS}/`, {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -88,10 +88,10 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setSenders(data);
+        setSenders(data.senders || []); // Extract senders array from response
         
         // Auto-select default sender if available
-        const defaultSender = data.find(sender => sender.is_default && sender.verification_status === 'verified');
+        const defaultSender = data.senders && data.senders.find(sender => sender.is_default && sender.verification_status === 'verified');
         if (defaultSender) {
           setSelectedSender(defaultSender.id);
         }
@@ -309,7 +309,7 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setRecentCampaigns(data);
+        setRecentCampaigns(data.campaigns || []); // Extract campaigns array from response
       } else {
         console.error('Failed to load recent campaigns');
       }
@@ -393,7 +393,7 @@ function AutonomousCampaign() {
                 required
               >
                 <option value="">Select a sender email</option>
-                {senders.map((sender) => (
+                {Array.isArray(senders) && senders.map((sender) => (
                   <option key={sender.id} value={sender.id}>
                     {sender.display_name || sender.email} 
                     {sender.verification_status === 'verified' ? ' ✅' : 
@@ -402,7 +402,7 @@ function AutonomousCampaign() {
                   </option>
                 ))}
               </select>
-              {senders.length === 0 && (
+              {(!senders || senders.length === 0) && (
                 <div className="sender-info">
                   <p>No sender emails found. <a href="/sender-management">Add a sender email</a> first.</p>
                 </div>
@@ -418,7 +418,7 @@ function AutonomousCampaign() {
                 required
               >
                 <option value="">Select a contact file</option>
-                {files.map((file) => (
+                {Array.isArray(files) && files.map((file) => (
                   <option key={file.id} value={file.id}>
                     {file.filename} ({file.contact_count} contacts)
                   </option>
@@ -435,7 +435,7 @@ function AutonomousCampaign() {
                 required
               >
                 <option value="">Select an email template</option>
-                {templates.map((template) => (
+                {Array.isArray(templates) && templates.map((template) => (
                   <option key={template.id} value={template.id}>
                     {template.name}
                   </option>
@@ -567,7 +567,7 @@ function AutonomousCampaign() {
                 <div className="detail-section">
                   <h4>Template Variables Found:</h4>
                   <div className="variables-list">
-                    {validationData.template_variables.length > 0 ? (
+                    {validationData.template_variables && validationData.template_variables.length > 0 ? (
                       validationData.template_variables.map((variable, index) => (
                         <span key={index} className="variable-tag">{variable}</span>
                       ))
@@ -580,13 +580,13 @@ function AutonomousCampaign() {
                 <div className="detail-section">
                   <h4>Available Columns in Contact File:</h4>
                   <div className="columns-list">
-                    {validationData.available_columns.map((column, index) => (
+                    {validationData.available_columns && validationData.available_columns.map((column, index) => (
                       <span key={index} className="column-tag">{column}</span>
                     ))}
                   </div>
                 </div>
 
-                {validationData.missing_variables.length > 0 && (
+                {validationData.missing_variables && validationData.missing_variables.length > 0 && (
                   <div className="detail-section error">
                     <h4>Missing Variables:</h4>
                     <div className="missing-variables">
@@ -606,7 +606,7 @@ function AutonomousCampaign() {
                   </div>
                 )}
 
-                {validationData.available_variables.length > 0 && (
+                {validationData.available_variables && validationData.available_variables.length > 0 && (
                   <div className="detail-section success">
                     <h4>Matching Variables:</h4>
                     <div className="matching-variables">
@@ -664,7 +664,7 @@ function AutonomousCampaign() {
             </div>
           ) : (
             <div className={viewMode === 'grid' ? 'campaigns-grid' : 'campaigns-tile'}>
-              {recentCampaigns.map((campaign) => (
+              {Array.isArray(recentCampaigns) && recentCampaigns.map((campaign) => (
                 <div key={campaign.id} className={viewMode === 'grid' ? 'campaign-item' : 'campaign-tile-item'}>
                   <div className="campaign-header">
                     <div className="campaign-status">

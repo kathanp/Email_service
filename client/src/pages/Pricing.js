@@ -19,7 +19,7 @@ function Pricing() {
   const fetchPlans = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/plans`, {
+      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/plans`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -27,7 +27,7 @@ function Pricing() {
       
       if (response.ok) {
         const data = await response.json();
-        setPlans(data);
+        setPlans(data || []); // The v1 endpoint returns the array directly
       } else {
         setError('Failed to load subscription plans');
       }
@@ -39,7 +39,7 @@ function Pricing() {
   const fetchCurrentSubscription = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/current`, {
+      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/current`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -61,7 +61,7 @@ function Pricing() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/create`, {
+      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,73 +127,81 @@ function Pricing() {
       </div>
 
       <div className="plans-grid">
-        {plans.map((plan) => (
-          <div 
-            key={plan.id} 
-            className={`plan-card ${isCurrentPlan(plan) ? 'current' : ''}`}
-          >
-            {isCurrentPlan(plan) && (
-              <div className="current-badge">Current Plan</div>
-            )}
-            
-            <div className="plan-header">
-              <h3>{plan.name}</h3>
-              <div className="price">
-                <span className="currency">$</span>
-                <span className="amount">
-                  {billingCycle === 'monthly' ? plan.price_monthly : plan.price_yearly}
-                </span>
-                <span className="period">/{billingCycle === 'monthly' ? 'mo' : 'year'}</span>
-              </div>
-            </div>
-
-            <div className="plan-features">
-              <div className="feature">
-                <span className="feature-label">Email Limit:</span>
-                <span className="feature-value">{plan.features.email_limit.toLocaleString()} emails</span>
-              </div>
-              <div className="feature">
-                <span className="feature-label">Sender Limit:</span>
-                <span className="feature-value">{plan.features.sender_limit} senders</span>
-              </div>
-              <div className="feature">
-                <span className="feature-label">Template Limit:</span>
-                <span className="feature-value">{plan.features.template_limit} templates</span>
-              </div>
-              {plan.features.api_access && (
-                <div className="feature">
-                  <span className="feature-label">API Access:</span>
-                  <span className="feature-value">✓ Included</span>
-                </div>
-              )}
-              {plan.features.priority_support && (
-                <div className="feature">
-                  <span className="feature-label">Priority Support:</span>
-                  <span className="feature-value">✓ Included</span>
-                </div>
-              )}
-              {plan.features.white_label && (
-                <div className="feature">
-                  <span className="feature-label">White Label:</span>
-                  <span className="feature-value">✓ Included</span>
-                </div>
-              )}
-              {plan.features.custom_integrations && (
-                <div className="feature">
-                  <span className="feature-label">Custom Integrations:</span>
-                  <span className="feature-value">✓ Included</span>
-                </div>
-              )}
-            </div>
-
-            <button
-              className={`plan-button ${isCurrentPlan(plan) ? 'current' : ''}`}
-              onClick={() => handleSubscribe(plan)}
-              disabled={isCurrentPlan(plan)}
+        {Array.isArray(plans) && plans.map((plan) => (
+          plan && (
+            <div 
+              key={plan.id} 
+              className={`plan-card ${isCurrentPlan(plan) ? 'current' : ''}`}
             >
-              {isCurrentPlan(plan) ? 'Current Plan' : 'Choose Plan'}
-            </button>
-          </div>
+              {isCurrentPlan(plan) && (
+                <div className="current-badge">Current Plan</div>
+              )}
+              
+              <div className="plan-header">
+                <h3>{plan.name || 'Unnamed Plan'}</h3>
+                <div className="price">
+                  <span className="currency">$</span>
+                  <span className="amount">
+                    {billingCycle === 'monthly' ? (plan.price_monthly || 0) : (plan.price_yearly || 0)}
+                  </span>
+                  <span className="period">/{billingCycle === 'monthly' ? 'mo' : 'year'}</span>
+                </div>
+              </div>
+
+              <div className="plan-features">
+                <div className="feature">
+                  <span className="feature-icon">📧</span>
+                  <span className="feature-text">
+                    {plan.features.email_limit === -1 ? 'Unlimited' : plan.features.email_limit.toLocaleString()} emails/month
+                  </span>
+                </div>
+                <div className="feature">
+                  <span className="feature-icon">📮</span>
+                  <span className="feature-text">
+                    {plan.features.sender_limit === -1 ? 'Unlimited' : plan.features.sender_limit} sender emails
+                  </span>
+                </div>
+                <div className="feature">
+                  <span className="feature-icon">📝</span>
+                  <span className="feature-text">
+                    {plan.features.template_limit === -1 ? 'Unlimited' : plan.features.template_limit} email templates
+                  </span>
+                </div>
+                {plan.features.api_access && (
+                  <div className="feature">
+                    <span className="feature-icon">🔌</span>
+                    <span className="feature-text">API Access</span>
+                  </div>
+                )}
+                {plan.features.priority_support && (
+                  <div className="feature">
+                    <span className="feature-icon">🎯</span>
+                    <span className="feature-text">Priority Support</span>
+                  </div>
+                )}
+                {plan.features.white_label && (
+                  <div className="feature">
+                    <span className="feature-icon">🏷️</span>
+                    <span className="feature-text">White Label</span>
+                  </div>
+                )}
+                {plan.features.custom_integrations && (
+                  <div className="feature">
+                    <span className="feature-icon">🔗</span>
+                    <span className="feature-text">Custom Integrations</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                className={`plan-button ${isCurrentPlan(plan) ? 'current' : ''}`}
+                onClick={() => handleSubscribe(plan)}
+                disabled={isCurrentPlan(plan)}
+              >
+                {isCurrentPlan(plan) ? 'Current Plan' : 'Choose Plan'}
+              </button>
+            </div>
+          )
         ))}
       </div>
 

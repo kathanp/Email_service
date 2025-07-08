@@ -334,11 +334,10 @@ async def get_google_login_url(request: Request):
             redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://www.mailsflow.net/auth/callback")
         
         if not client_id:
-            return {
-                "auth_url": f"https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri={redirect_uri}&response_type=code&scope=email profile",
-                "client_id": "test",
-                "message": "Using test client ID"
-            }
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google OAuth client ID not configured"
+            )
         
         auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope=email profile"
         
@@ -356,7 +355,7 @@ async def get_google_login_url(request: Request):
 
 @app.get("/api/v1/google-auth/callback")
 async def google_auth_callback(code: str, request: Request):
-    """Handle Google OAuth callback."""
+    """Handle Google OAuth callback for production."""
     try:
         logger.info(f"Google OAuth callback received with code: {code}")
         
@@ -409,8 +408,18 @@ async def google_auth_callback(code: str, request: Request):
         # Redirect to dashboard with session ID
         # Use localhost for local development, production URL for production
         host = request.headers.get("host", "")
+        referer = request.headers.get("referer", "")
+        
         if "localhost" in host or "127.0.0.1" in host:
-            dashboard_url = f"http://localhost:3000/dashboard?session={session_id}"
+            # Try to detect the frontend port from referer header
+            if referer and "localhost:" in referer:
+                # Extract port from referer (e.g., "http://localhost:3001/")
+                port_match = referer.split("localhost:")[1].split("/")[0]
+                frontend_port = port_match if port_match.isdigit() else "3001"
+                dashboard_url = f"http://localhost:{frontend_port}/dashboard?session={session_id}"
+            else:
+                # Default to 3001 if we can't detect the port
+                dashboard_url = f"http://localhost:3001/dashboard?session={session_id}"
         else:
             dashboard_url = f"https://www.mailsflow.net/dashboard?session={session_id}"
         
@@ -424,6 +433,8 @@ async def google_auth_callback(code: str, request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Google callback failed: {str(e)}"
         )
+
+
 
 # ===== STATS ENDPOINTS =====
 
@@ -674,8 +685,11 @@ async def get_customers(request: Request):
 async def create_customer(request: Request):
     """Create a new customer."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
         body = await request.json()
-        customer_id = f"customer_{len(customers_db) + 1}"
+        
+        customer_id = f"customer_{len(user_data['customers']) + 1}"
         
         customer = {
             "id": customer_id,
@@ -686,9 +700,11 @@ async def create_customer(request: Request):
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        customers_db[customer_id] = customer
+        user_data["customers"][customer_id] = customer
         
         return customer
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create customer error: {str(e)}")
         raise HTTPException(
@@ -697,15 +713,20 @@ async def create_customer(request: Request):
         )
 
 @app.get("/api/customers/{customer_id}")
-async def get_customer(customer_id: str):
+async def get_customer(customer_id: str, request: Request):
     """Get a specific customer."""
     try:
-        if customer_id not in customers_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if customer_id not in user_data["customers"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Customer not found"
             )
-        return customers_db[customer_id]
+        return user_data["customers"][customer_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get customer error: {str(e)}")
         raise HTTPException(
@@ -717,21 +738,26 @@ async def get_customer(customer_id: str):
 async def update_customer(customer_id: str, request: Request):
     """Update a customer."""
     try:
-        if customer_id not in customers_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if customer_id not in user_data["customers"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Customer not found"
             )
         
         body = await request.json()
-        customers_db[customer_id].update({
-            "email": body.get("email", customers_db[customer_id]["email"]),
-            "name": body.get("name", customers_db[customer_id]["name"]),
-            "phone": body.get("phone", customers_db[customer_id]["phone"]),
+        user_data["customers"][customer_id].update({
+            "email": body.get("email", user_data["customers"][customer_id]["email"]),
+            "name": body.get("name", user_data["customers"][customer_id]["name"]),
+            "phone": body.get("phone", user_data["customers"][customer_id]["phone"]),
             "updated_at": datetime.utcnow().isoformat()
         })
         
-        return customers_db[customer_id]
+        return user_data["customers"][customer_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Update customer error: {str(e)}")
         raise HTTPException(
@@ -740,17 +766,22 @@ async def update_customer(customer_id: str, request: Request):
         )
 
 @app.delete("/api/customers/{customer_id}")
-async def delete_customer(customer_id: str):
+async def delete_customer(customer_id: str, request: Request):
     """Delete a customer."""
     try:
-        if customer_id not in customers_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if customer_id not in user_data["customers"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Customer not found"
             )
         
-        deleted_customer = customers_db.pop(customer_id)
+        deleted_customer = user_data["customers"].pop(customer_id)
         return {"message": "Customer deleted successfully", "customer": deleted_customer}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Delete customer error: {str(e)}")
         raise HTTPException(
@@ -784,8 +815,11 @@ async def get_senders(request: Request):
 async def create_sender(request: Request):
     """Create a new sender."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
         body = await request.json()
-        sender_id = f"sender_{len(senders_db) + 1}"
+        
+        sender_id = f"sender_{len(user_data['senders']) + 1}"
         
         sender = {
             "id": sender_id,
@@ -796,9 +830,11 @@ async def create_sender(request: Request):
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        senders_db[sender_id] = sender
+        user_data["senders"][sender_id] = sender
         
         return sender
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create sender error: {str(e)}")
         raise HTTPException(
@@ -807,15 +843,20 @@ async def create_sender(request: Request):
         )
 
 @app.get("/api/senders/{sender_id}")
-async def get_sender(sender_id: str):
+async def get_sender(sender_id: str, request: Request):
     """Get a specific sender."""
     try:
-        if sender_id not in senders_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if sender_id not in user_data["senders"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sender not found"
             )
-        return senders_db[sender_id]
+        return user_data["senders"][sender_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get sender error: {str(e)}")
         raise HTTPException(
@@ -827,21 +868,26 @@ async def get_sender(sender_id: str):
 async def update_sender(sender_id: str, request: Request):
     """Update a sender."""
     try:
-        if sender_id not in senders_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if sender_id not in user_data["senders"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sender not found"
             )
         
         body = await request.json()
-        senders_db[sender_id].update({
-            "email": body.get("email", senders_db[sender_id]["email"]),
-            "name": body.get("name", senders_db[sender_id]["name"]),
-            "verified": body.get("verified", senders_db[sender_id]["verified"]),
+        user_data["senders"][sender_id].update({
+            "email": body.get("email", user_data["senders"][sender_id]["email"]),
+            "name": body.get("name", user_data["senders"][sender_id]["name"]),
+            "verified": body.get("verified", user_data["senders"][sender_id]["verified"]),
             "updated_at": datetime.utcnow().isoformat()
         })
         
-        return senders_db[sender_id]
+        return user_data["senders"][sender_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Update sender error: {str(e)}")
         raise HTTPException(
@@ -850,17 +896,22 @@ async def update_sender(sender_id: str, request: Request):
         )
 
 @app.delete("/api/senders/{sender_id}")
-async def delete_sender(sender_id: str):
+async def delete_sender(sender_id: str, request: Request):
     """Delete a sender."""
     try:
-        if sender_id not in senders_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if sender_id not in user_data["senders"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sender not found"
             )
         
-        deleted_sender = senders_db.pop(sender_id)
+        deleted_sender = user_data["senders"].pop(sender_id)
         return {"message": "Sender deleted successfully", "sender": deleted_sender}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Delete sender error: {str(e)}")
         raise HTTPException(
@@ -869,27 +920,32 @@ async def delete_sender(sender_id: str):
         )
 
 @app.post("/api/senders/{sender_id}/set-default")
-async def set_default_sender(sender_id: str):
+async def set_default_sender(sender_id: str, request: Request):
     """Set a sender as default."""
     try:
-        if sender_id not in senders_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if sender_id not in user_data["senders"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sender not found"
             )
         
         # Set all senders as non-default first
-        for sender in senders_db.values():
+        for sender in user_data["senders"].values():
             sender["is_default"] = False
         
         # Set the specified sender as default
-        senders_db[sender_id]["is_default"] = True
-        senders_db[sender_id]["updated_at"] = datetime.utcnow().isoformat()
+        user_data["senders"][sender_id]["is_default"] = True
+        user_data["senders"][sender_id]["updated_at"] = datetime.utcnow().isoformat()
         
         return {
             "message": "Default sender updated successfully",
             "sender_id": sender_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Set default sender error: {str(e)}")
         raise HTTPException(
@@ -898,22 +954,27 @@ async def set_default_sender(sender_id: str):
         )
 
 @app.post("/api/senders/{sender_id}/resend-verification")
-async def resend_verification(sender_id: str):
+async def resend_verification(sender_id: str, request: Request):
     """Resend verification email to sender."""
     try:
-        if sender_id not in senders_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if sender_id not in user_data["senders"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Sender not found"
             )
         
         # Mock verification email sent
-        senders_db[sender_id]["verification_sent_at"] = datetime.utcnow().isoformat()
+        user_data["senders"][sender_id]["verification_sent_at"] = datetime.utcnow().isoformat()
         
         return {
             "message": "Verification email sent successfully",
             "sender_id": sender_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Resend verification error: {str(e)}")
         raise HTTPException(
@@ -947,8 +1008,11 @@ async def get_campaigns(request: Request):
 async def create_campaign(request: Request):
     """Create a new campaign."""
     try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
         body = await request.json()
-        campaign_id = f"campaign_{len(campaigns_db) + 1}"
+        
+        campaign_id = f"campaign_{len(user_data['campaigns']) + 1}"
         
         campaign = {
             "id": campaign_id,
@@ -962,9 +1026,11 @@ async def create_campaign(request: Request):
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        campaigns_db[campaign_id] = campaign
+        user_data["campaigns"][campaign_id] = campaign
         
         return campaign
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Create campaign error: {str(e)}")
         raise HTTPException(
@@ -973,15 +1039,20 @@ async def create_campaign(request: Request):
         )
 
 @app.get("/api/campaigns/{campaign_id}")
-async def get_campaign(campaign_id: str):
+async def get_campaign(campaign_id: str, request: Request):
     """Get a specific campaign."""
     try:
-        if campaign_id not in campaigns_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if campaign_id not in user_data["campaigns"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Campaign not found"
             )
-        return campaigns_db[campaign_id]
+        return user_data["campaigns"][campaign_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get campaign error: {str(e)}")
         raise HTTPException(
@@ -993,24 +1064,29 @@ async def get_campaign(campaign_id: str):
 async def update_campaign(campaign_id: str, request: Request):
     """Update a campaign."""
     try:
-        if campaign_id not in campaigns_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if campaign_id not in user_data["campaigns"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Campaign not found"
             )
         
         body = await request.json()
-        campaigns_db[campaign_id].update({
-            "name": body.get("name", campaigns_db[campaign_id]["name"]),
-            "subject": body.get("subject", campaigns_db[campaign_id]["subject"]),
-            "content": body.get("content", campaigns_db[campaign_id]["content"]),
-            "status": body.get("status", campaigns_db[campaign_id]["status"]),
-            "sender_id": body.get("sender_id", campaigns_db[campaign_id]["sender_id"]),
-            "template_id": body.get("template_id", campaigns_db[campaign_id]["template_id"]),
+        user_data["campaigns"][campaign_id].update({
+            "name": body.get("name", user_data["campaigns"][campaign_id]["name"]),
+            "subject": body.get("subject", user_data["campaigns"][campaign_id]["subject"]),
+            "content": body.get("content", user_data["campaigns"][campaign_id]["content"]),
+            "status": body.get("status", user_data["campaigns"][campaign_id]["status"]),
+            "sender_id": body.get("sender_id", user_data["campaigns"][campaign_id]["sender_id"]),
+            "template_id": body.get("template_id", user_data["campaigns"][campaign_id]["template_id"]),
             "updated_at": datetime.utcnow().isoformat()
         })
         
-        return campaigns_db[campaign_id]
+        return user_data["campaigns"][campaign_id]
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Update campaign error: {str(e)}")
         raise HTTPException(
@@ -1019,17 +1095,22 @@ async def update_campaign(campaign_id: str, request: Request):
         )
 
 @app.delete("/api/campaigns/{campaign_id}")
-async def delete_campaign(campaign_id: str):
+async def delete_campaign(campaign_id: str, request: Request):
     """Delete a campaign."""
     try:
-        if campaign_id not in campaigns_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if campaign_id not in user_data["campaigns"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Campaign not found"
             )
         
-        deleted_campaign = campaigns_db.pop(campaign_id)
+        deleted_campaign = user_data["campaigns"].pop(campaign_id)
         return {"message": "Campaign deleted successfully", "campaign": deleted_campaign}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Delete campaign error: {str(e)}")
         raise HTTPException(
@@ -1038,22 +1119,27 @@ async def delete_campaign(campaign_id: str):
         )
 
 @app.post("/api/campaigns/{campaign_id}/send")
-async def send_campaign(campaign_id: str):
+async def send_campaign(campaign_id: str, request: Request):
     """Send a campaign."""
     try:
-        if campaign_id not in campaigns_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if campaign_id not in user_data["campaigns"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Campaign not found"
             )
         
-        campaigns_db[campaign_id]["status"] = "sent"
-        campaigns_db[campaign_id]["sent_at"] = datetime.utcnow().isoformat()
+        user_data["campaigns"][campaign_id]["status"] = "sent"
+        user_data["campaigns"][campaign_id]["sent_at"] = datetime.utcnow().isoformat()
         
         return {
             "message": "Campaign sent successfully",
             "campaign_id": campaign_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Send campaign error: {str(e)}")
         raise HTTPException(
@@ -1103,16 +1189,19 @@ async def preview_campaign(request: Request):
         )
 
 @app.get("/api/campaigns/{campaign_id}/status")
-async def get_campaign_status(campaign_id: str):
+async def get_campaign_status(campaign_id: str, request: Request):
     """Get campaign status."""
     try:
-        if campaign_id not in campaigns_db:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        if campaign_id not in user_data["campaigns"]:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Campaign not found"
             )
         
-        campaign = campaigns_db[campaign_id]
+        campaign = user_data["campaigns"][campaign_id]
         
         return {
             "campaign_id": campaign_id,
@@ -1121,6 +1210,8 @@ async def get_campaign_status(campaign_id: str):
             "sent_count": campaign.get("sent_count", 0),
             "total_count": campaign.get("total_count", 0)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get campaign status error: {str(e)}")
         raise HTTPException(
@@ -1337,23 +1428,47 @@ async def get_subscription_plans():
                 {
                     "id": "basic",
                     "name": "Basic",
-                    "price": 9.99,
-                    "billing_cycle": "monthly",
-                    "features": ["1000 emails/month", "5 templates", "2 senders"]
+                    "price_monthly": 9.99,
+                    "price_yearly": 99.99,
+                    "features": {
+                        "email_limit": 1000,
+                        "sender_limit": 5,
+                        "template_limit": 10,
+                        "api_access": False,
+                        "priority_support": False,
+                        "white_label": False,
+                        "custom_integrations": False
+                    }
                 },
                 {
                     "id": "pro",
                     "name": "Professional",
-                    "price": 29.99,
-                    "billing_cycle": "monthly",
-                    "features": ["10000 emails/month", "Unlimited templates", "10 senders"]
+                    "price_monthly": 29.99,
+                    "price_yearly": 299.99,
+                    "features": {
+                        "email_limit": 10000,
+                        "sender_limit": 10,
+                        "template_limit": 50,
+                        "api_access": True,
+                        "priority_support": False,
+                        "white_label": False,
+                        "custom_integrations": False
+                    }
                 },
                 {
                     "id": "enterprise",
                     "name": "Enterprise",
-                    "price": 99.99,
-                    "billing_cycle": "monthly",
-                    "features": ["Unlimited emails", "Unlimited templates", "Unlimited senders"]
+                    "price_monthly": 99.99,
+                    "price_yearly": 999.99,
+                    "features": {
+                        "email_limit": -1,  # Unlimited
+                        "sender_limit": -1,  # Unlimited
+                        "template_limit": -1,  # Unlimited
+                        "api_access": True,
+                        "priority_support": True,
+                        "white_label": True,
+                        "custom_integrations": True
+                    }
                 }
             ]
         }
@@ -1409,6 +1524,126 @@ async def get_stripe_key():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get Stripe key: {str(e)}"
+        )
+
+@app.get("/api/v1/subscriptions/plans")
+async def get_subscription_plans_v1():
+    """Get available subscription plans (v1 endpoint)."""
+    try:
+        return [
+            {
+                "id": "basic",
+                "name": "Basic",
+                "price_monthly": 9.99,
+                "price_yearly": 99.99,
+                "features": {
+                    "email_limit": 1000,
+                    "sender_limit": 5,
+                    "template_limit": 10,
+                    "api_access": False,
+                    "priority_support": False,
+                    "white_label": False,
+                    "custom_integrations": False
+                }
+            },
+            {
+                "id": "pro",
+                "name": "Professional",
+                "price_monthly": 29.99,
+                "price_yearly": 299.99,
+                "features": {
+                    "email_limit": 10000,
+                    "sender_limit": 10,
+                    "template_limit": 50,
+                    "api_access": True,
+                    "priority_support": False,
+                    "white_label": False,
+                    "custom_integrations": False
+                }
+            },
+            {
+                "id": "enterprise",
+                "name": "Enterprise",
+                "price_monthly": 99.99,
+                "price_yearly": 999.99,
+                "features": {
+                    "email_limit": -1,  # Unlimited
+                    "sender_limit": -1,  # Unlimited
+                    "template_limit": -1,  # Unlimited
+                    "api_access": True,
+                    "priority_support": True,
+                    "white_label": True,
+                    "custom_integrations": True
+                }
+            }
+        ]
+    except Exception as e:
+        logger.error(f"Get subscription plans error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get subscription plans: {str(e)}"
+        )
+
+@app.get("/api/v1/subscriptions/current")
+async def get_current_subscription_v1(request: Request):
+    """Get current subscription for the current user (v1 endpoint)."""
+    try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        # Return user's subscription or create a default one
+        if not user_data["subscriptions"]:
+            # Create default subscription for new user
+            user_data["subscriptions"]["current"] = {
+                "id": f"sub_{uid}",
+                "plan": "basic",
+                "status": "active",
+                "billing_cycle": "monthly",
+                "current_period_start": datetime.utcnow().isoformat(),
+                "current_period_end": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+                "created_at": datetime.utcnow().isoformat()
+            }
+        
+        return user_data["subscriptions"]["current"]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get current subscription error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get current subscription: {str(e)}"
+        )
+
+@app.post("/api/v1/subscriptions/create")
+async def create_subscription_v1(request: Request):
+    """Create a new subscription for the current user (v1 endpoint)."""
+    try:
+        email, uid = get_user_from_token(request)
+        user_data = get_user_data(uid)
+        
+        body = await request.json()
+        plan_id = body.get("plan", "basic")
+        billing_cycle = body.get("billing_cycle", "monthly")
+        
+        # Update user's subscription
+        user_data["subscriptions"]["current"] = {
+            "id": f"sub_{uid}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+            "plan": plan_id,
+            "status": "active",
+            "billing_cycle": billing_cycle,
+            "current_period_start": datetime.utcnow().isoformat(),
+            "current_period_end": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        return user_data["subscriptions"]["current"]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create subscription error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create subscription: {str(e)}"
         )
 
 # ===== BASIC ENDPOINTS =====

@@ -20,7 +20,8 @@ export const API_ENDPOINTS = {
   CUSTOMERS: `${API_BASE_URL}/api/customers`,
   STATS: `${API_BASE_URL}/api/stats`,
   CAMPAIGNS: `${API_BASE_URL}/api/campaigns`,
-  SUBSCRIPTIONS: `${API_BASE_URL}/api/v1/subscriptions`,
+  SUBSCRIPTIONS: `${API_BASE_URL}/api/subscriptions`,
+  SUBSCRIPTIONS_V1: `${API_BASE_URL}/api/v1/subscriptions`,
   GOOGLE_AUTH: `${API_BASE_URL}/api/v1/google-auth`,
 };
 

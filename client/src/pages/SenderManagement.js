@@ -17,7 +17,7 @@ function SenderManagement() {
   const fetchSenders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SENDERS}/`, {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -25,7 +25,7 @@ function SenderManagement() {
       
       if (response.ok) {
         const data = await response.json();
-        setSenders(data);
+        setSenders(data.senders || []); // Extract senders array from response
       } else {
         setError('Failed to load sender emails');
       }
@@ -218,13 +218,13 @@ function SenderManagement() {
       {/* Senders List */}
       <div className="senders-list">
         <h2>Your Sender Emails</h2>
-        {senders.length === 0 ? (
+        {(!senders || senders.length === 0) ? (
           <div className="no-senders">
             <p>No sender emails added yet. Add your first sender email above.</p>
           </div>
         ) : (
           <div className="senders-grid">
-            {senders.map((sender) => (
+            {Array.isArray(senders) && senders.map((sender) => (
               <div key={sender.id} className="sender-card">
                 <div className="sender-info">
                   <h3>{sender.name}</h3>
