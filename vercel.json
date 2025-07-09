@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "public": true,
   "builds": [
     {
       "src": "client/package.json",
@@ -19,7 +20,12 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/main.py"
+      "dest": "/server/main.py",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
     },
     {
       "src": "/health",
