@@ -4,8 +4,8 @@ from typing import Optional, List
 
 class Settings(BaseSettings):
     # MongoDB Configuration
-    MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb+srv://emailbotuser:eHl0X72QJP6Or5lf@cluster0.wdvicn9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "email_bot")
+    MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb+srv://emailbotuser:Xa5EekvEr1cMEGUq@cluster0.wdvicn9.mongodb.net/emailbot?retryWrites=true&w=majority&appName=Cluster0")
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "emailbot")
     
     # JWT Configuration
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
