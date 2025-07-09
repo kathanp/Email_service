@@ -9,7 +9,7 @@
       }
     },
     {
-      "src": "server/main.py",
+      "src": "server/app/main.py",
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "15mb"
@@ -19,15 +19,15 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server/main.py"
+      "dest": "/server/app/main.py"
     },
     {
       "src": "/health",
-      "dest": "/server/main.py"
+      "dest": "/server/app/main.py"
     },
     {
       "src": "/test",
-      "dest": "/server/main.py"
+      "dest": "/server/app/main.py"
     },
     {
       "src": "/static/(.*)",
