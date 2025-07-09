@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './FileManager.css';
 import { useNavigate } from 'react-router-dom';
@@ -13,11 +13,7 @@ function FileManager() {
   const [showPreview, setShowPreview] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchFiles();
-  }, []);
-
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -46,10 +42,14 @@ function FileManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]);
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
 
     const token = localStorage.getItem('token');
@@ -57,10 +57,6 @@ function FileManager() {
       setError('No authentication token found');
       return;
     }
-
-    setUploading(true);
-    setError('');
-    setSuccess('');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -75,22 +71,17 @@ function FileManager() {
       });
 
       if (response.ok) {
-        const data = await response.json();
         setSuccess('File uploaded successfully!');
-        e.target.value = ''; // Clear the input
-        // Refresh files list to get the updated data
-        fetchFiles();
+        fetchFiles(); // Refresh the file list
       } else if (response.status === 401) {
         setError('Authentication failed. Please log in again.');
         navigate('/login');
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.detail || 'Failed to upload file');
+        const errorData = await response.json();
+        setError(errorData.detail || 'Upload failed');
       }
     } catch (error) {
-      setError('Network error uploading file');
-    } finally {
-      setUploading(false);
+      setError('Network error during upload');
     }
   };
 

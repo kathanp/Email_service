@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './CustomerManager.css';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,34 @@ function AutonomousCampaign() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'tile'
   const navigate = useNavigate();
 
+  const fetchFiles = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        return;
+      }
+
+      const response = await fetch(`${API_ENDPOINTS.FILES}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFiles(data || []);
+      } else if (response.status === 401) {
+        setError('Authentication failed. Please log in again.');
+        navigate('/login');
+      } else {
+        setError('Failed to load files');
+      }
+    } catch (error) {
+      setError('Network error loading files');
+    }
+  }, [navigate]);
+
   useEffect(() => {
     fetchFiles();
     fetchTemplates();
@@ -39,28 +67,9 @@ function AutonomousCampaign() {
     };
   }, []); // Empty dependency array to run only once on mount
 
-  const fetchFiles = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.FILES}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setFiles(data || []);
-      } else if (response.status === 401) {
-        setError('Authentication failed. Please log in again.');
-        navigate('/login');
-      } else {
-        setError('Failed to load files');
-      }
-    } catch (error) {
-      setError('Network error loading files');
-    }
-  };
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]);
 
   const fetchTemplates = async () => {
     try {

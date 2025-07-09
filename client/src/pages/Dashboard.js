@@ -7,8 +7,6 @@ import './Dashboard.css';
 
 function Dashboard() {
   const [user, setUser] = useState(null);
-  const [error, setError] = useState('');
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { 
     stats, 
@@ -37,10 +35,10 @@ function Dashboard() {
             // Force re-render
             window.location.reload();
           } else {
-            setError('Failed to complete authentication');
+            // setError('Failed to complete authentication'); // This line was removed
           }
         } catch (error) {
-          setError('Network error during authentication');
+          // setError('Network error during authentication'); // This line was removed
         }
       };
       
@@ -53,7 +51,7 @@ function Dashboard() {
           const user = JSON.parse(userData);
           setUser(user);
         } catch (error) {
-          setError('Error loading user data');
+          // setError('Error loading user data'); // This line was removed
         }
       }
     }
