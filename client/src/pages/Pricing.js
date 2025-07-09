@@ -72,7 +72,7 @@ function Pricing() {
         setCurrentSubscription(data);
       }
     } catch (error) {
-      console.error('Error fetching current subscription:', error);
+      // console.error('Error fetching current subscription:', error);
     } finally {
       setLoading(false);
     }

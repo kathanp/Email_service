@@ -32,7 +32,7 @@ function SubscriptionSummary() {
   };
 
   const handleSubscriptionError = (error) => {
-    console.error('Subscription error:', error);
+    // console.error('Subscription error:', error);
   };
 
   return (
