@@ -132,7 +132,7 @@ async def logout(request: Request):
     logger.info("✅ SUCCESS: User logged out")
     return {"message": "Successfully logged out"}
 
-@router.get("/check-user/{email}")
+@router.get("/check-user")
 async def check_specific_user(email: str):
     """Check if a specific user exists by email"""
     return {
