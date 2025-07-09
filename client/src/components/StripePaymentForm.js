@@ -9,7 +9,6 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvc, setCvc] = useState('');
-  const [cardType, setCardType] = useState('');
   const [fullName, setFullName] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,7 +26,6 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
     try {
       const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/stripe-key`);
       if (response.ok) {
-        const data = await response.json();
         // Stripe key loaded successfully
       } else {
         setError('Failed to load payment configuration');
@@ -35,20 +33,6 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
     } catch (error) {
       setError('Network error loading payment configuration');
     }
-  };
-
-  const detectCardType = (number) => {
-    const cleanNumber = number.replace(/\s/g, '');
-    
-    if (cleanNumber.match(/^4/)) return 'visa';
-    if (cleanNumber.match(/^5[1-5]/)) return 'mastercard';
-    if (cleanNumber.match(/^3[47]/)) return 'amex';
-    if (cleanNumber.match(/^6/)) return 'discover';
-    if (cleanNumber.match(/^(2131|1800|35\d{3})/)) return 'jcb';
-    if (cleanNumber.match(/^3(?:0[0-5]|[68])/)) return 'diners';
-    if (cleanNumber.match(/^(5018|5020|5038|6304|6759|6761|6763)/)) return 'maestro';
-    
-    return '';
   };
 
   const validateForm = () => {
@@ -155,11 +139,6 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
                   maxLength="19"
                   required
                 />
-                {cardType && (
-                  <div className="card-type-icon" data-type={cardType}>
-                    {cardType.toUpperCase()}
-                  </div>
-                )}
               </div>
             </div>
 

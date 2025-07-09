@@ -52,8 +52,7 @@ export const AppProvider = ({ children }) => {
       const response = await fetch(url, config);
       return response;
     } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
+      throw new Error('API request failed');
     }
   }, []);
 
@@ -108,7 +107,7 @@ export const AppProvider = ({ children }) => {
         }));
       }
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      // Error handling without console
     }
   }, [apiRequest]);
 
@@ -116,9 +115,8 @@ export const AppProvider = ({ children }) => {
     try {
       // Activity is now fetched in fetchStats function
       // This function is kept for backward compatibility
-      console.log('Activity fetching moved to fetchStats');
     } catch (error) {
-      console.error('Error fetching activity:', error);
+      // Error handling without console
     }
   }, []);
 
@@ -140,7 +138,7 @@ export const AppProvider = ({ children }) => {
         }));
       }
     } catch (error) {
-      console.error('Error fetching campaign stats:', error);
+      // Error handling without console
     }
   }, [apiRequest]);
 
@@ -152,7 +150,7 @@ export const AppProvider = ({ children }) => {
         setTemplates(data.templates || []); // Extract templates array from response
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      // Error handling without console
     }
   }, [apiRequest]);
 
@@ -172,7 +170,6 @@ export const AppProvider = ({ children }) => {
         return { success: false, error: errorData.detail || 'Failed to create template' };
       }
     } catch (error) {
-      console.error('Error creating template:', error);
       return { success: false, error: 'Network error' };
     }
   }, [apiRequest]);
@@ -193,7 +190,6 @@ export const AppProvider = ({ children }) => {
         return { success: false, error: errorData.detail || 'Failed to update template' };
       }
     } catch (error) {
-      console.error('Error updating template:', error);
       return { success: false, error: 'Network error' };
     }
   }, [apiRequest]);
@@ -216,7 +212,6 @@ export const AppProvider = ({ children }) => {
         return { success: false, error: errorData.detail || 'Failed to set default template' };
       }
     } catch (error) {
-      console.error('Error setting default template:', error);
       return { success: false, error: 'Network error' };
     }
   }, [apiRequest]);
@@ -235,7 +230,6 @@ export const AppProvider = ({ children }) => {
         return { success: false, error: errorData.detail || 'Failed to delete template' };
       }
     } catch (error) {
-      console.error('Error deleting template:', error);
       return { success: false, error: 'Network error' };
     }
   }, [apiRequest]);

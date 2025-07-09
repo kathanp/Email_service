@@ -16,7 +16,6 @@ function Navigation() {
       try {
         setUser(JSON.parse(userData));
       } catch (error) {
-        console.error('Error parsing user data:', error);
         localStorage.removeItem('user');
       }
     }
@@ -32,7 +31,6 @@ function Navigation() {
       try {
         setIsSidebarCollapsed(JSON.parse(sidebarState));
       } catch (error) {
-        console.error('Error parsing sidebar state:', error);
         localStorage.removeItem('sidebarCollapsed');
       }
     }
