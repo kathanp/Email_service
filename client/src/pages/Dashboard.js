@@ -7,6 +7,7 @@ import './Dashboard.css';
 
 function Dashboard() {
   const [user, setUser] = useState(null);
+  const [error, setError] = useState('');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { 
