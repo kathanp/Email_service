@@ -70,9 +70,11 @@ function Pricing() {
       if (response.ok) {
         const data = await response.json();
         setCurrentSubscription(data);
+      } else {
+        setError('Failed to fetch subscription data');
       }
     } catch (error) {
-      // console.error('Error fetching current subscription:', error);
+      setError('Failed to fetch subscription data');
     } finally {
       setLoading(false);
     }

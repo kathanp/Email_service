@@ -38,9 +38,7 @@ function AuthPage() {
         localStorage.removeItem('user');
           }
         } catch (error) {
-      // console.error('Auth check failed:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      setError('Auth check failed');
     }
   }, [navigate]);
 
@@ -82,7 +80,6 @@ function AuthPage() {
 
       if (response.ok) {
         if (isLogin) {
-          // console.log('Login successful, storing token:', data.access_token);
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
           setSuccess('Login successful! Redirecting...');

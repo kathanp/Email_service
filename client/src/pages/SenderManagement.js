@@ -25,8 +25,7 @@ function SenderManagement() {
       
       if (response.ok) {
         const data = await response.json();
-        // console.log('SenderManagement - Senders response:', data);
-        setSenders(data || []); // Backend returns senders array directly
+        setSenders(data || []);
       } else {
         setError('Failed to load sender emails');
       }
