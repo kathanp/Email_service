@@ -56,33 +56,6 @@ class AuthService:
         logger.info(f"Full name: {user_data.full_name}")
         
         try:
-            if self._is_development_mode():
-                # Development mode - return mock response
-                logger.info("🔄 Development mode: Creating mock user registration")
-                mock_user = UserResponse(
-                    id="dev_user_123",
-                    email=user_data.email,
-                    username=user_data.username,
-                    full_name=user_data.full_name,
-                    role="user",
-                    created_at=datetime.utcnow(),
-                    last_login=datetime.utcnow(),
-                    is_active=True,
-                    google_id=None,
-                    google_name=None,
-                    sender_email=None
-                )
-                
-                # Create access token for mock user
-                access_token = create_access_token(data={"sub": mock_user.email})
-                
-                logger.info(f"✅ SUCCESS: Mock user created - ID: {mock_user.id}")
-                return {
-                    "access_token": access_token,
-                    "token_type": "bearer",
-                    "user": mock_user
-                }
-
             logger.info("🔄 Production mode: Creating real user in database")
             users_collection = self._get_users_collection()
             
@@ -163,23 +136,6 @@ class AuthService:
     async def register_google_user(self, user_data: GoogleUserCreate) -> UserResponse:
         """Register a new user via Google OAuth."""
         try:
-            if self._is_development_mode():
-                # Development mode - return mock response
-                logger.info("Development mode: Mock Google user registration")
-                return UserResponse(
-                    id="dev_google_user_123",
-                    email=user_data.email,
-                    username=None,
-                    full_name=user_data.full_name,
-                    role="user",
-                    created_at=datetime.utcnow(),
-                    last_login=datetime.utcnow(),
-                    is_active=True,
-                    google_id=user_data.google_id,
-                    google_name=user_data.google_name,
-                    sender_email=None
-                )
-
             users_collection = self._get_users_collection()
             
             # Check if user already exists by email
@@ -246,15 +202,13 @@ class AuthService:
                 created_at=created_user["created_at"],
                 last_login=created_user.get("last_login"),
                 is_active=created_user["is_active"],
-                usersubscription=created_user.get("usersubscription", "free"),
                 google_id=created_user.get("google_id"),
                 google_name=created_user.get("google_name"),
                 sender_email=created_user.get("sender_email")
             )
 
-        except HTTPException:
-            raise
         except Exception as e:
+            logger.error(f"❌ ERROR: Error creating Google user - {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error creating Google user: {str(e)}"
@@ -263,25 +217,6 @@ class AuthService:
     async def authenticate_user(self, email: str, password: str) -> Optional[UserInDB]:
         """Authenticate a user with email and password."""
         try:
-            if self._is_development_mode():
-                # Development mode - allow any login with test credentials
-                logger.info("Development mode: Mock authentication")
-                if email == "test@example.com" and password == "testpass123":
-                    return UserInDB(
-                        id="dev_user_123",
-                        email=email,
-                        username="testuser",
-                        full_name="Test User",
-                        role="user",
-                        is_active=True,
-                        is_superuser=False,
-                        hashed_password=None,
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
-                        last_login=datetime.utcnow()
-                    )
-                return None
-
             users_collection = self._get_users_collection()
             user = await users_collection.find_one({"email": email})
             if not user:
@@ -327,17 +262,14 @@ class AuthService:
 
             logger.info(f"✅ SUCCESS: User authenticated - ID: {user.id}")
 
-            # Update last login (only if database is available)
-            if not self._is_development_mode():
-                logger.info("Updating last login timestamp...")
-                users_collection = self._get_users_collection()
-                await users_collection.update_one(
-                    {"_id": user.id},
-                    {"$set": {"last_login": datetime.utcnow()}}
-                )
-                logger.info("✅ SUCCESS: Last login updated")
-            else:
-                logger.info("🔄 Development mode: Skipping last login update")
+            # Update last login
+            logger.info("Updating last login timestamp...")
+            users_collection = self._get_users_collection()
+            await users_collection.update_one(
+                {"_id": user.id},
+                {"$set": {"last_login": datetime.utcnow()}}
+            )
+            logger.info("✅ SUCCESS: Last login updated")
 
             # Create access token
             logger.info("Creating access token...")
@@ -376,23 +308,6 @@ class AuthService:
     async def get_user_by_email(self, email: str) -> Optional[UserInDB]:
         """Get user by email."""
         try:
-            if self._is_development_mode():
-                # Development mode - return mock user
-                logger.info("Development mode: Mock get user by email")
-                return UserInDB(
-                    id="dev_user_123",
-                    email=email,
-                    username="testuser",
-                    full_name="Test User",
-                    role="user",
-                    is_active=True,
-                    is_superuser=False,
-                    hashed_password=None,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                    last_login=datetime.utcnow()
-                )
-
             users_collection = self._get_users_collection()
             user = await users_collection.find_one({"email": email})
             if not user:
@@ -411,23 +326,6 @@ class AuthService:
     async def get_user_by_id(self, user_id: str) -> Optional[UserInDB]:
         """Get user by ID."""
         try:
-            if self._is_development_mode():
-                # Development mode - return mock user
-                logger.info("Development mode: Mock get user by ID")
-                return UserInDB(
-                    id=user_id,
-                    email="test@example.com",
-                    username="testuser",
-                    full_name="Test User",
-                    role="user",
-                    is_active=True,
-                    is_superuser=False,
-                    hashed_password=None,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                    last_login=datetime.utcnow()
-                )
-
             users_collection = self._get_users_collection()
             user = await users_collection.find_one({"_id": ObjectId(user_id)})
             if not user:
