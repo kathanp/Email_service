@@ -8,7 +8,6 @@ function FileManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [uploading, setUploading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const navigate = useNavigate();
@@ -222,11 +221,11 @@ function FileManager() {
             id="file-upload"
             accept=".xlsx,.xls,.csv"
             onChange={handleFileUpload}
-            disabled={uploading}
+            disabled={false}
             style={{ display: 'none' }}
           />
           <label htmlFor="file-upload" className="upload-button">
-            {uploading ? 'Uploading...' : 'Choose File'}
+            Choose File
               </label>
           <p className="upload-hint">
             Supported formats: Excel (.xlsx, .xls), CSV (.csv)

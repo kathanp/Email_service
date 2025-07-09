@@ -53,25 +53,7 @@ function AutonomousCampaign() {
     }
   }, [navigate]);
 
-  useEffect(() => {
-    fetchFiles();
-    fetchTemplates();
-    fetchSenders();
-    fetchRecentCampaigns();
-    
-    // Cleanup function to stop polling when component unmounts
-    return () => {
-      if (statusIntervalRef.current) {
-        clearInterval(statusIntervalRef.current);
-      }
-    };
-  }, []); // Empty dependency array to run only once on mount
-
-  useEffect(() => {
-    fetchFiles();
-  }, [fetchFiles]);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_ENDPOINTS.TEMPLATES}`, {
@@ -89,9 +71,9 @@ function AutonomousCampaign() {
     } catch (err) {
       setError('Network error loading templates');
     }
-  };
+  }, []);
 
-  const fetchSenders = async () => {
+  const fetchSenders = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_ENDPOINTS.SENDERS}`, {
@@ -115,7 +97,43 @@ function AutonomousCampaign() {
     } catch (err) {
       setError('Network error loading sender emails');
     }
-  };
+  }, []);
+
+  const fetchRecentCampaigns = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_ENDPOINTS.STATS}/campaigns`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRecentCampaigns(data.campaigns || []); // Extract campaigns array from response
+      } else {
+        setError('Failed to load recent campaigns');
+      }
+    } catch (error) {
+      setError('Network error loading recent campaigns');
+    } finally {
+      setCampaignsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFiles();
+    fetchTemplates();
+    fetchSenders();
+    fetchRecentCampaigns();
+    
+    // Cleanup function to stop polling when component unmounts
+    return () => {
+      if (statusIntervalRef.current) {
+        clearInterval(statusIntervalRef.current);
+      }
+    };
+  }, [fetchFiles, fetchTemplates, fetchSenders, fetchRecentCampaigns]);
 
   const validateTemplate = async () => {
     if (!selectedFile || !selectedTemplate) {
@@ -310,28 +328,6 @@ function AutonomousCampaign() {
     }
     setShowLiveStatus(false);
     setCampaignStatus(null);
-  };
-
-  const fetchRecentCampaigns = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.STATS}/campaigns`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setRecentCampaigns(data.campaigns || []); // Extract campaigns array from response
-      } else {
-        setError('Failed to load recent campaigns');
-      }
-    } catch (error) {
-      setError('Network error loading recent campaigns');
-    } finally {
-      setCampaignsLoading(false);
-    }
   };
 
   const getCampaignStatusIcon = (status) => {
