@@ -135,21 +135,8 @@ async def logout(request: Request):
 @router.get("/check-user/{email}")
 async def check_specific_user(email: str):
     """Check if a specific user exists by email"""
-    try:
-        users_collection = MongoDB.get_collection("users")
-        if users_collection is None:
-            return {"error": "Database not available"}
-        
-        user = await users_collection.find_one({"email": email})
-        if user:
-            return {
-                "found": True, 
-                "email": email,
-                "user_id": str(user.get("_id")),
-                "username": user.get("username"),
-                "created_at": user.get("created_at")
-            }
-        else:
-            return {"found": False, "email": email}
-    except Exception as e:
-        return {"error": f"Database error: {str(e)}"} 
+    return {
+        "found": False, 
+        "email": email,
+        "message": "Route is working but database check not implemented yet"
+    } 
