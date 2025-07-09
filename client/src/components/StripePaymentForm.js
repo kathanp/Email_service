@@ -28,7 +28,7 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
       const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS}/stripe-key`);
       if (response.ok) {
         const data = await response.json();
-        console.log('Stripe key loaded:', data.publishable_key);
+        setStripeKey(data.publishable_key);
       } else {
         setError('Failed to load payment configuration');
       }

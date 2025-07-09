@@ -19,22 +19,7 @@ export const fetchStats = async () => {
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching stats:', error);
-    // Return default stats if API fails
-    return {
-      totalSent: 0,
-      totalCustomers: 0,
-      sentToday: 0,
-      scheduledEmails: 0,
-      thisWeekSent: 0,
-      totalCampaigns: 0,
-      todayChange: 0,
-      weekChange: 0,
-      monthChange: 0,
-      todaySuccessRate: 0,
-      yesterdaySuccessRate: 0,
-      overallSuccessRate: 0
-    };
+    throw new Error('Failed to fetch stats');
   }
 };
 
@@ -50,13 +35,12 @@ export const fetchRecentActivity = async () => {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch activity');
+      throw new Error('Failed to fetch activity data');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching activity:', error);
-    return [];
+    throw new Error('Failed to fetch activity data');
   }
 };
 

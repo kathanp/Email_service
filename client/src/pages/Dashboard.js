@@ -15,63 +15,48 @@ function Dashboard() {
   } = useAppContext();
 
   useEffect(() => {
-    // Check for Google OAuth session in URL parameters
-    const sessionId = searchParams.get('session');
-    
-    console.log('Dashboard useEffect - sessionId:', sessionId);
-    console.log('Current URL:', window.location.href);
+    const sessionId = new URLSearchParams(window.location.search).get('session_id');
     
     if (sessionId) {
-      console.log('Google OAuth session received, fetching authentication data...');
-      
-      // Fetch session data from backend
-      fetch(`/api/auth/session/${sessionId}`)
-        .then(response => {
-          console.log('Session response status:', response.status);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log('Session data received:', data);
-          
-          // Store the token
-          localStorage.setItem('token', data.access_token);
-          console.log('Token stored:', data.access_token);
-          
-          // Store user data
-          localStorage.setItem('user', JSON.stringify(data.user));
-          console.log('User data stored:', data.user);
-          
-          setUser(data.user);
-          
-          // Force URL cleanup immediately
-          console.log('Forcing URL cleanup...');
-          window.location.replace('/dashboard');
-          
-          console.log('Authentication data stored, user logged in');
-        })
-        .catch(error => {
-          console.error('Error fetching session:', error);
-          // If session fetch fails, try to redirect to login
-          alert('Google login failed. Please try again.');
-          window.location.href = '/';
-        });
-    } else {
-      // Get user data from localStorage (normal login)
-      const userData = localStorage.getItem('user');
-      console.log('No session, checking localStorage for user data:', userData);
-      if (userData && userData !== 'null' && userData !== 'undefined') {
+      // Handle Google OAuth session
+      const fetchSession = async () => {
         try {
-          setUser(JSON.parse(userData));
+          const response = await fetch(`/api/v1/google-auth/session?session_id=${sessionId}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Store authentication data
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            
+            // Clean up URL
+            window.history.replaceState({}, document.title, '/dashboard');
+            
+            // Force re-render
+            window.location.reload();
+          } else {
+            setError('Failed to complete authentication');
+          }
         } catch (error) {
-          console.error('Error parsing user data:', error);
-          localStorage.removeItem('user');
+          setError('Network error during authentication');
+        }
+      };
+      
+      fetchSession();
+    } else {
+      // Check if user is already logged in
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          setUser(user);
+        } catch (error) {
+          setError('Error loading user data');
         }
       }
     }
-  }, [searchParams]); // Include searchParams in dependency array
+  }, []);
 
   // Remove the additional effect since we're using window.location.replace()
 

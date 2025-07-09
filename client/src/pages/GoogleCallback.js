@@ -19,9 +19,6 @@ function GoogleCallback() {
           setIsLoading(false);
           return;
         }
-
-        console.log('Google callback token received:', token);
-        console.log('User email:', userEmail);
         
         // Store the token
         localStorage.setItem('token', token);
@@ -34,13 +31,10 @@ function GoogleCallback() {
         };
         localStorage.setItem('user', JSON.stringify(userData));
         
-        console.log('Stored token, redirecting to dashboard...');
-        
         // Redirect to dashboard using React Router
         navigate('/dashboard', { replace: true });
         
       } catch (error) {
-        console.error('Google callback error:', error);
         setError('Network error. Please try again.');
         setIsLoading(false);
       }

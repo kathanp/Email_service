@@ -88,7 +88,6 @@ export const apiRequest = async (url, options = {}) => {
 
     return response;
   } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
+    throw new Error('API request failed');
   }
 };
