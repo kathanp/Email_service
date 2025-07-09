@@ -1,0 +1,86 @@
+[
+  {
+    "test": "Backend Health Check",
+    "success": true,
+    "message": "Backend server is running",
+    "timestamp": "2025-07-08T23:55:11.761769"
+  },
+  {
+    "test": "Frontend Health Check",
+    "success": true,
+    "message": "Frontend server is running",
+    "timestamp": "2025-07-08T23:55:11.865280"
+  },
+  {
+    "test": "User Registration",
+    "success": true,
+    "message": "User registered successfully",
+    "timestamp": "2025-07-08T23:55:12.434193"
+  },
+  {
+    "test": "User Login",
+    "success": true,
+    "message": "User logged in successfully",
+    "timestamp": "2025-07-08T23:55:12.908652"
+  },
+  {
+    "test": "File Upload",
+    "success": false,
+    "message": "Status: 201, Response: {\"filename\":\"test_contacts.xlsx\",\"file_type\":\"excel\",\"file_size\":30,\"description\":null,\"id\":\"686df63125f3ef5db55bbf00\",\"user_id\":\"686df63025f3ef5db55bbeff\",\"upload_date\":\"2025-07-09T04:55:13.016000\",\"is_active\":true,\"processed\":false,\"contacts_count\":null}",
+    "timestamp": "2025-07-08T23:55:13.186521"
+  },
+  {
+    "test": "Template Creation",
+    "success": true,
+    "message": "Template created with ID: 686df63125f3ef5db55bbf01",
+    "timestamp": "2025-07-08T23:55:13.587435"
+  },
+  {
+    "test": "Get Templates",
+    "success": true,
+    "message": "Found 1 templates",
+    "timestamp": "2025-07-08T23:55:13.738830"
+  },
+  {
+    "test": "Sender Creation",
+    "success": false,
+    "message": "Status: 200, Response: {\"success\":true,\"message\":\"Verification email sent to test_sender_1752036913@example.com\",\"sender_id\":\"686df63225f3ef5db55bbf02\",\"verification_status\":\"pending\"}",
+    "timestamp": "2025-07-08T23:55:14.717209"
+  },
+  {
+    "test": "Get Campaigns",
+    "success": true,
+    "message": "Found 1 campaigns",
+    "timestamp": "2025-07-08T23:55:14.822306"
+  },
+  {
+    "test": "Get Plans",
+    "success": true,
+    "message": "Found 4 plans",
+    "timestamp": "2025-07-08T23:55:14.848854"
+  },
+  {
+    "test": "Get Current Subscription",
+    "success": true,
+    "message": "Subscription status retrieved",
+    "timestamp": "2025-07-08T23:55:15.465365"
+  },
+  {
+    "test": "Get Stats Summary",
+    "success": true,
+    "message": "Statistics retrieved successfully",
+    "timestamp": "2025-07-08T23:55:15.977527"
+  },
+  {
+    "test": "Get Recent Activity",
+    "success": true,
+    "message": "Activity data retrieved successfully",
+    "timestamp": "2025-07-08T23:55:16.064075"
+  },
+  {
+    "test": "Get Current User",
+    "success": true,
+    "message": "Status: 200",
+    "timestamp": "2025-07-08T23:55:16.150044"
+  }
+]

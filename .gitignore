@@ -39,3 +39,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Ignore environment and secret files
+.env
+*.env
+*aws_env_setup.txt
+*test_aws_ses.py
+*.key
+*.pem
+*.secret

@@ -40,39 +40,15 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
   const detectCardType = (number) => {
     const cleanNumber = number.replace(/\s/g, '');
     
-    if (/^4/.test(cleanNumber)) return 'visa';
-    if (/^5[1-5]/.test(cleanNumber)) return 'mastercard';
-    if (/^3[47]/.test(cleanNumber)) return 'amex';
-    if (/^6/.test(cleanNumber)) return 'discover';
-    if (/^35/.test(cleanNumber)) return 'jcb';
-    if (/^2/.test(cleanNumber)) return 'mastercard'; // Mastercard 2-series
+    if (cleanNumber.match(/^4/)) return 'visa';
+    if (cleanNumber.match(/^5[1-5]/)) return 'mastercard';
+    if (cleanNumber.match(/^3[47]/)) return 'amex';
+    if (cleanNumber.match(/^6/)) return 'discover';
+    if (cleanNumber.match(/^(2131|1800|35\d{3})/)) return 'jcb';
+    if (cleanNumber.match(/^3(?:0[0-5]|[68])/)) return 'diners';
+    if (cleanNumber.match(/^(5018|5020|5038|6304|6759|6761|6763)/)) return 'maestro';
     
     return '';
-  };
-
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatExpiry = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
   };
 
   const validateForm = () => {
@@ -117,7 +93,7 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
       });
 
       if (upgradeResponse.ok) {
-        const result = await upgradeResponse.json();
+        await upgradeResponse.json();
         setSuccess('Payment successful! Your subscription has been upgraded.');
         // Navigate back to pricing page with success parameter
         setTimeout(() => {

@@ -68,7 +68,6 @@ function UsageStats() {
         });
       }
     } catch (error) {
-      console.error('Error fetching usage data:', error);
       setError('Failed to load usage data');
     } finally {
       setLoading(false);
