@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './CustomerManager.css';
 import { useNavigate } from 'react-router-dom';
