@@ -21,6 +21,7 @@ build/
 *.env
 server/.env
 client/.env
+client/.env.production
 credentials.json
 token.json
 verified_senders.json
