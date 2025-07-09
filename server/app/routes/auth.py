@@ -132,11 +132,37 @@ async def logout(request: Request):
     logger.info("✅ SUCCESS: User logged out")
     return {"message": "Successfully logged out"}
 
-@router.get("/check-user")
-async def check_specific_user(email: str):
-    """Check if a specific user exists by email"""
-    return {
-        "found": False, 
-        "email": email,
-        "message": "Route is working but database check not implemented yet"
-    } 
+@router.get("/test-db")
+async def test_database_connection():
+    """Test MongoDB connection status"""
+    try:
+        from ..db.mongodb import MongoDB
+        from ..core.config import settings
+        
+        logger.info("Testing MongoDB connection...")
+        logger.info(f"MongoDB URL: {settings.MONGODB_URL}")
+        logger.info(f"Database name: {settings.DATABASE_NAME}")
+        
+        collection = MongoDB.get_collection("users")
+        if collection is not None:
+            # Try to count documents to test actual connection
+            count = await collection.count_documents({})
+            return {
+                "status": "connected",
+                "database": settings.DATABASE_NAME,
+                "users_count": count,
+                "message": "MongoDB connection successful"
+            }
+        else:
+            return {
+                "status": "disconnected",
+                "database": settings.DATABASE_NAME,
+                "message": "MongoDB collection is None"
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "database": settings.DATABASE_NAME,
+            "error": str(e),
+            "error_type": type(e).__name__
+        } 

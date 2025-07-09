@@ -17,15 +17,20 @@ class AuthService:
         """Get users collection."""
         try:
             logger.info("Getting users collection from MongoDB...")
+            logger.info(f"MongoDB URL: {MongoDB.get_database_url()}")
+            logger.info(f"Database name: {MongoDB.get_database_name()}")
+            
             collection = MongoDB.get_collection("users")
             if collection is not None:
                 logger.info("✅ SUCCESS: Users collection retrieved")
                 return collection
             else:
                 logger.warning("⚠️  WARNING: Users collection is None")
+                logger.error("❌ ERROR: MongoDB connection failed - collection is None")
                 return None
         except Exception as e:
             logger.error(f"❌ ERROR: Failed to get users collection - {e}")
+            logger.error(f"Error type: {type(e).__name__}")
             logger.warning(f"Database not available: {e}")
             return None
 
