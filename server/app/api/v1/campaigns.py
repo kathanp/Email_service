@@ -132,6 +132,9 @@ async def create_and_send_campaign(
 ):
     """Create and send a campaign using existing processed file and template."""
     try:
+        logger.info(f"🚀 Campaign creation initiated for user {current_user.id}")
+        logger.info(f"📋 Campaign details: Template ID: {campaign_data.template_id}, File ID: {campaign_data.file_id}")
+        
         # Initialize services
         subscription_service = SubscriptionService()
         sender_service = SenderService()
@@ -147,25 +150,31 @@ async def create_and_send_campaign(
             )
         
         sender_email = default_sender['email']
+        logger.info(f"📧 Using sender email: {sender_email} for user {current_user.id}")
         
-        # Get template
+        # Get template with user isolation
         template = await template_service.get_template_by_id(
             campaign_data.template_id, 
             current_user.id
         )
+        logger.info(f"📝 Template retrieved: {template.name} for user {current_user.id}")
         
-        # Get file
+        # Get file with user isolation - CRITICAL SECURITY CHECK
         file_collection = MongoDB.get_collection("files")
         file_doc = await file_collection.find_one({
             "_id": ObjectId(campaign_data.file_id),
-            "user_id": current_user.id
+            "user_id": current_user.id,  # 🔒 USER ISOLATION: Only user's own files
+            "is_active": True
         })
         
         if not file_doc:
+            logger.warning(f"⚠️ File access denied: File {campaign_data.file_id} not found for user {current_user.id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Contact file not found"
             )
+        
+        logger.info(f"📁 File access granted: {file_doc['filename']} for user {current_user.id}")
         
         if not file_doc.get('processed'):
             raise HTTPException(

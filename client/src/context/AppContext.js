@@ -59,24 +59,52 @@ export const AppProvider = ({ children }) => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await apiRequest(`${API_ENDPOINTS.STATS}/overview`);
-      if (response.ok) {
-        const data = await response.json();
+      // Fetch overview stats
+      const overviewResponse = await apiRequest(`${API_ENDPOINTS.STATS}/summary`);
+      if (overviewResponse.ok) {
+        const overviewData = await overviewResponse.json();
         setStats(prevStats => ({
           ...prevStats,
-          totalCustomers: data.total_customers || 0,
-          scheduledEmails: data.total_campaigns || 0,
-          sentToday: 25, // Mock data for now
-          totalSent: data.total_campaigns * 100 || 0, // Mock calculation
-          todayChange: 12, // Mock data
-          monthChange: 8, // Mock data
-          totalEmails: data.total_campaigns || 0,
-          totalCampaigns: data.total_campaigns || 0,
-          totalTemplates: data.total_templates || 0,
-          totalSenders: data.total_senders || 0,
-          emailsSentToday: 25, // Mock data
-          emailsSentThisMonth: data.total_campaigns * 100 || 0, // Mock calculation
-          successRate: 95 // Default success rate
+          totalCustomers: overviewData.totalCustomers || 0,
+          scheduledEmails: overviewData.scheduledEmails || 0,
+          sentToday: overviewData.sentToday || 0,
+          totalSent: overviewData.totalSent || 0,
+          todayChange: overviewData.todayChange || 0,
+          monthChange: overviewData.monthChange || 0,
+          totalEmails: overviewData.totalSent || 0,
+          totalCampaigns: overviewData.totalCampaigns || 0,
+          emailsSentToday: overviewData.sentToday || 0,
+          emailsSentThisMonth: overviewData.thisMonthSent || 0,
+          successRate: overviewData.overallSuccessRate || 0
+        }));
+      }
+
+      // Fetch campaign stats
+      const campaignsResponse = await apiRequest(`${API_ENDPOINTS.STATS}/campaigns`);
+      if (campaignsResponse.ok) {
+        const campaignsData = await campaignsResponse.json();
+        setStats(prevStats => ({
+          ...prevStats,
+          campaignStats: campaignsData.map(campaign => ({
+            id: campaign.id,
+            name: campaign.name,
+            status: campaign.status,
+            totalEmails: campaign.totalEmails,
+            successful: campaign.successful,
+            failed: campaign.failed,
+            successRate: campaign.successRate,
+            createdAt: campaign.createdAt
+          }))
+        }));
+      }
+
+      // Fetch recent activity
+      const activityResponse = await apiRequest(`${API_ENDPOINTS.STATS}/activity`);
+      if (activityResponse.ok) {
+        const activityData = await activityResponse.json();
+        setStats(prevStats => ({
+          ...prevStats,
+          recentActivity: activityData
         }));
       }
     } catch (error) {
@@ -86,26 +114,9 @@ export const AppProvider = ({ children }) => {
 
   const fetchActivity = useCallback(async () => {
     try {
-      // For now, create mock activity data since we don't have this endpoint
-      const mockActivity = [
-        {
-          id: 1,
-          type: 'campaign_sent',
-          message: 'Welcome campaign sent to 150 customers',
-          timestamp: new Date().toISOString()
-        },
-        {
-          id: 2,
-          type: 'template_created',
-          message: 'New template "Newsletter Template" created',
-          timestamp: new Date(Date.now() - 86400000).toISOString()
-        }
-      ];
-      
-      setStats(prevStats => ({
-        ...prevStats,
-        recentActivity: mockActivity
-      }));
+      // Activity is now fetched in fetchStats function
+      // This function is kept for backward compatibility
+      console.log('Activity fetching moved to fetchStats');
     } catch (error) {
       console.error('Error fetching activity:', error);
     }

@@ -62,8 +62,13 @@ function Dashboard() {
       // Get user data from localStorage (normal login)
       const userData = localStorage.getItem('user');
       console.log('No session, checking localStorage for user data:', userData);
-      if (userData) {
-        setUser(JSON.parse(userData));
+      if (userData && userData !== 'null' && userData !== 'undefined') {
+        try {
+          setUser(JSON.parse(userData));
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          localStorage.removeItem('user');
+        }
       }
     }
   }, [searchParams]); // Include searchParams in dependency array

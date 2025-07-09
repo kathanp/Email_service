@@ -1,24 +1,77 @@
-import React from 'react';
-import { useAppContext } from '../context/AppContext';
+import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config';
 import './UsageStats.css';
 import { Mail, MailCheck, Edit } from 'lucide-react';
 
 function UsageStats() {
-  const { stats, templates } = useAppContext();
-
-  // Mock usage data for now
-  const usageData = {
-    emails_sent_this_month: stats.emailsSentThisMonth || 0,
-    senders_used: stats.totalSenders || 0,
-    templates_used: templates.length || 0
-  };
-
-  const planData = {
-    plan: 'basic',
+  const [usageData, setUsageData] = useState({
+    emails_sent_this_month: 0,
+    senders_used: 0,
+    templates_used: 0
+  });
+  const [planData, setPlanData] = useState({
+    plan: 'free',
     features: {
-      email_limit: 1000,
-      sender_limit: 5,
-      template_limit: 10
+      email_limit: 100,
+      sender_limit: 1,
+      template_limit: 3
+    }
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchUsageData();
+  }, []);
+
+  const fetchUsageData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found');
+        setLoading(false);
+        return;
+      }
+
+      // Fetch current subscription
+      const subscriptionResponse = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/current`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      // Fetch usage stats
+      const usageResponse = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/usage`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (subscriptionResponse.ok) {
+        const subscriptionData = await subscriptionResponse.json();
+        setPlanData({
+          plan: subscriptionData.plan || 'free',
+          features: subscriptionData.features || {
+            email_limit: 100,
+            sender_limit: 1,
+            template_limit: 3
+          }
+        });
+      }
+
+      if (usageResponse.ok) {
+        const usageResponseData = await usageResponse.json();
+        setUsageData({
+          emails_sent_this_month: usageResponseData.emails_sent_this_month || 0,
+          senders_used: usageResponseData.senders_used || 0,
+          templates_used: usageResponseData.templates_created || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching usage data:', error);
+      setError('Failed to load usage data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,6 +95,30 @@ function UsageStats() {
   const emailPercentage = getUsagePercentage(usageData.emails_sent_this_month, planData.features.email_limit);
   const senderPercentage = getUsagePercentage(usageData.senders_used, planData.features.sender_limit);
   const templatePercentage = getUsagePercentage(usageData.templates_used, planData.features.template_limit);
+
+  if (loading) {
+    return (
+      <div className="usage-stats">
+        <div className="usage-header">
+          <h3>📊 Usage & Limits</h3>
+          <div className="plan-badge">Loading...</div>
+        </div>
+        <div className="usage-loading">Loading usage data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="usage-stats">
+        <div className="usage-header">
+          <h3>�� Usage & Limits</h3>
+          <div className="plan-badge">Error</div>
+        </div>
+        <div className="usage-error">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="usage-stats">

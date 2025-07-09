@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 security = HTTPBearer()
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, request: Request):
-    """Register a new user."""
+    """Register a new user and return access token."""
     logger.info("=" * 40)
     logger.info("AUTH: User registration attempt")
     logger.info("=" * 40)
@@ -24,9 +24,10 @@ async def register(user_data: UserCreate, request: Request):
     auth_service = AuthService()
     try:
         logger.info("Calling AuthService.register_user...")
-        user = await auth_service.register_user(user_data)
-        logger.info(f"✅ SUCCESS: User registered successfully - ID: {user.id}")
-        return user
+        result = await auth_service.register_user(user_data)
+        user_id = result['user'].id if hasattr(result['user'], 'id') else result['user']['id']
+        logger.info(f"✅ SUCCESS: User registered successfully - ID: {user_id}")
+        return result
     except HTTPException as he:
         logger.error(f"❌ HTTP ERROR: Registration failed - {he.status_code}: {he.detail}")
         raise

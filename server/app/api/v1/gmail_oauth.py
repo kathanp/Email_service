@@ -6,7 +6,7 @@ from ..deps import get_current_user
 from ...models.user import User
 from ...services.gmail_oauth_service import GmailOAuthService
 from ...services.auth_service import AuthService
-from ...db.mongodb import get_database
+from ...db.mongodb import MongoDB
 
 router = APIRouter()
 gmail_service = GmailOAuthService()
@@ -65,7 +65,7 @@ async def gmail_oauth_callback(
             )
         
         # Update user with Gmail tokens
-        db = get_database()
+        db = MongoDB.get_database()
         user_id = state  # The state parameter contains the user ID
         
         update_data = {
@@ -108,7 +108,7 @@ async def gmail_oauth_callback(
 async def get_gmail_status(current_user: User = Depends(get_current_user)):
     """Get Gmail OAuth status for current user."""
     try:
-        db = get_database()
+        db = MongoDB.get_database()
         user = db.users.find_one({"_id": current_user.id})
         
         if not user:
@@ -149,7 +149,7 @@ async def get_gmail_status(current_user: User = Depends(get_current_user)):
 async def disconnect_gmail(current_user: User = Depends(get_current_user)):
     """Disconnect Gmail OAuth for current user."""
     try:
-        db = get_database()
+        db = MongoDB.get_database()
         
         update_data = {
             "gmail_access_token": None,
@@ -184,7 +184,7 @@ async def disconnect_gmail(current_user: User = Depends(get_current_user)):
 async def refresh_gmail_token(current_user: User = Depends(get_current_user)):
     """Refresh Gmail access token."""
     try:
-        db = get_database()
+        db = MongoDB.get_database()
         user = db.users.find_one({"_id": current_user.id})
         
         if not user or not user.get('gmail_refresh_token'):
@@ -231,7 +231,7 @@ async def send_test_email(
 ):
     """Send a test email using Gmail."""
     try:
-        db = get_database()
+        db = MongoDB.get_database()
         user = db.users.find_one({"_id": current_user.id})
         
         if not user or not user.get('gmail_access_token'):

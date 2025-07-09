@@ -23,6 +23,7 @@ class FileService:
     async def upload_file(self, file: UploadFile, user_id: str, description: Optional[str] = None) -> FileResponse:
         """Upload and store a file in the database."""
         try:
+            logger.info(f"📁 File upload initiated for user {user_id}: {file.filename}")
             files_collection = self._get_files_collection()
             
             # Validate file extension first
@@ -46,13 +47,13 @@ class FileService:
             # Determine file type
             file_type = self._get_file_type(file.filename)
 
-            # Create file document
+            # Create file document with user isolation
             file_data = FileCreate(
                 filename=file.filename,
                 file_type=file_type,
                 file_size=len(file_content),
                 description=description,
-                user_id=user_id,
+                user_id=user_id,  # 🔒 CRITICAL: User isolation
                 file_data=file_content
             )
 
@@ -67,13 +68,15 @@ class FileService:
             # Get the created file
             created_file = await files_collection.find_one({"_id": result.inserted_id})
             
+            logger.info(f"✅ File uploaded successfully for user {user_id}: {file.filename} (ID: {result.inserted_id})")
+            
             return FileResponse(
                 id=str(created_file["_id"]),
                 filename=created_file["filename"],
                 file_type=created_file["file_type"],
                 file_size=created_file["file_size"],
                 description=created_file.get("description"),
-                user_id=created_file["user_id"],
+                user_id=created_file["user_id"],  # 🔒 User isolation maintained
                 upload_date=created_file["upload_date"],
                 is_active=created_file["is_active"],
                 processed=created_file["processed"],
@@ -83,11 +86,36 @@ class FileService:
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error uploading file: {str(e)}")
+            logger.error(f"❌ Error uploading file for user {user_id}: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"File upload failed: {str(e)}"
             )
+
+    async def verify_file_ownership(self, file_id: str, user_id: str) -> bool:
+        """Verify that a file belongs to the specified user."""
+        try:
+            files_collection = self._get_files_collection()
+            
+            if not ObjectId.is_valid(file_id):
+                return False
+
+            file = await files_collection.find_one({
+                "_id": ObjectId(file_id),
+                "user_id": user_id,
+                "is_active": True
+            })
+
+            if file:
+                logger.info(f"✅ File ownership verified: File {file_id} belongs to user {user_id}")
+                return True
+            else:
+                logger.warning(f"⚠️ File ownership verification failed: File {file_id} does not belong to user {user_id}")
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Error verifying file ownership: {str(e)}")
+            return False
 
     async def get_user_files(self, user_id: str) -> List[FileResponse]:
         """Get all files uploaded by a user."""

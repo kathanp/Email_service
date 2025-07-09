@@ -55,13 +55,39 @@ class TemplateService:
     async def create_template(self, template_data: TemplateCreate) -> TemplateResponse:
         """Create a new email template."""
         try:
-            # Check subscription limits first
-            limit_check = await self.subscription_service.check_template_limit(template_data.user_id)
-            if not limit_check["allowed"]:
-                upgrade_message = await self.subscription_service.get_upgrade_message(template_data.user_id, "templates")
+            # Get user info for subscription check
+            users_collection = MongoDB.get_collection("users")
+            user_doc = await users_collection.find_one({"_id": ObjectId(template_data.user_id)})
+            if not user_doc:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+            
+            # Create UserResponse object for subscription service
+            from ..models.user import UserResponse
+            user = UserResponse(
+                id=str(user_doc["_id"]),
+                email=user_doc["email"],
+                username=user_doc.get("username"),
+                full_name=user_doc.get("full_name"),
+                role=user_doc["role"],
+                created_at=user_doc["created_at"],
+                last_login=user_doc.get("last_login"),
+                is_active=user_doc["is_active"],
+                usersubscription=user_doc.get("usersubscription", "free"),
+                google_id=user_doc.get("google_id"),
+                google_name=user_doc.get("google_name"),
+                sender_email=user_doc.get("sender_email")
+            )
+            
+            # Check subscription limits
+            limit_check = await self.subscription_service.check_template_limit(user)
+            if not limit_check["can_create"]:
+                plan_limits = self.subscription_service.get_user_plan_limits(user)
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"{limit_check['reason']}. {upgrade_message}"
+                    detail=f"You have reached the maximum number of templates ({plan_limits['templates']}) for your {user.usersubscription} plan. Please upgrade to create more templates."
                 )
             
             templates_collection = self._get_templates_collection()

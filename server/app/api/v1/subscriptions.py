@@ -12,7 +12,6 @@ from ...models.subscription import (
     SUBSCRIPTION_PLANS, SubscriptionFeatures
 )
 from ...services.stripe_service import stripe_service
-from ...services.mock_subscription_service import mock_subscription_service
 from ...core.config import settings
 from ...db.mongodb import MongoDB
 
@@ -77,7 +76,29 @@ async def get_current_subscription(current_user: UserResponse = Depends(get_curr
                 detail="User not found"
             )
         
+        # Check both subscription object and usersubscription field
         subscription_data = user.get("subscription", {})
+        user_subscription = user.get("usersubscription", "free")
+        
+        # If no subscription object but has usersubscription field, use that
+        if not subscription_data and user_subscription:
+            plan = user_subscription
+            plan_details = SUBSCRIPTION_PLANS.get(plan, SUBSCRIPTION_PLANS[SubscriptionPlan.FREE])
+            usage = await calculate_user_usage(current_user.id)
+            
+            return SubscriptionResponse(
+                id=current_user.id,
+                user_id=current_user.id,
+                plan=plan,
+                billing_cycle=BillingCycle.MONTHLY,
+                status=PaymentStatus.ACTIVE,
+                current_period_start=datetime.utcnow(),
+                current_period_end=datetime.utcnow() + timedelta(days=30),
+                cancel_at_period_end=False,
+                stripe_subscription_id=None,
+                features=plan_details.features,
+                usage=usage
+            )
         
         if not subscription_data:
             # Return free plan for users without subscription
@@ -408,6 +429,48 @@ async def get_payment_method(current_user: UserResponse = Depends(get_current_us
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch payment method"
+        )
+
+@router.post("/upgrade", response_model=dict)
+async def upgrade_subscription(
+    plan: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Upgrade user subscription after successful Stripe payment."""
+    try:
+        from ..services.subscription_service import SubscriptionService
+        subscription_service = SubscriptionService()
+        
+        # Validate plan
+        valid_plans = ["starter", "professional", "enterprise"]
+        if plan not in valid_plans:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid plan. Must be one of: {', '.join(valid_plans)}"
+            )
+        
+        # Update user subscription
+        success = await subscription_service.update_user_subscription(current_user.id, plan)
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully upgraded to {plan} plan",
+                "plan": plan
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update subscription"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error upgrading subscription: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Subscription upgrade failed: {str(e)}"
         )
 
 async def calculate_user_usage(user_id: str) -> dict:

@@ -5,6 +5,7 @@ from app.api.v1 import campaigns, google_auth, subscriptions
 from app.core.config import settings
 from app.db.mongodb import MongoDB
 import logging
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -59,20 +60,52 @@ async def shutdown_db_client():
 @app.get("/")
 async def root():
     """Root endpoint."""
+    try:
+        # Test actual MongoDB connection by trying to access a collection
+        collection = MongoDB.get_collection("users")
+        db_status = "connected" if collection is not None else "disconnected (development mode)"
+    except Exception as e:
+        db_status = f"disconnected (error: {str(e)})"
+    
     return {
         "message": "Email Bot API",
         "version": "1.0.0",
         "status": "running",
-        "database": "connected" if hasattr(MongoDB, 'client') and MongoDB.client else "disconnected (development mode)"
+        "database": db_status
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    try:
+        # Test actual MongoDB connection by trying to access a collection
+        collection = MongoDB.get_collection("users")
+        db_status = "connected" if collection is not None else "disconnected"
+        mode = "development" if collection is None else "production"
+    except Exception as e:
+        db_status = f"disconnected (error: {str(e)})"
+        mode = "development"
+    
     return {
         "status": "healthy", 
-        "database": "connected" if hasattr(MongoDB, 'client') and MongoDB.client else "disconnected",
-        "mode": "development" if not (hasattr(MongoDB, 'client') and MongoDB.client) else "production"
+        "database": db_status,
+        "mode": mode
+    }
+
+@app.get("/test")
+async def test_endpoint():
+    """Test endpoint to verify server is working."""
+    try:
+        # Test actual MongoDB connection by trying to access a collection
+        collection = MongoDB.get_collection("users")
+        development_mode = collection is None
+    except Exception as e:
+        development_mode = True
+    
+    return {
+        "message": "Server is working!",
+        "timestamp": datetime.utcnow().isoformat(),
+        "development_mode": development_mode
     }
 
 if __name__ == "__main__":

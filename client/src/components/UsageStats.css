@@ -206,16 +206,21 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Loading and Error States */
 .usage-loading,
 .usage-error {
   text-align: center;
   padding: 40px 20px;
-  color: #6b7280;
-  font-size: 1rem;
+  color: #6c757d;
+  font-size: 1.1rem;
 }
 
 .usage-error {
-  color: #ef4444;
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  margin: 20px;
 }
 
 /* Responsive Design */

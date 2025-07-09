@@ -1,23 +1,10 @@
-from pydantic import BaseModel, Field, ConfigDict, validator, GetJsonSchemaHandler
+from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import Optional, Any
 from datetime import datetime
 from bson import ObjectId
 import re
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_pydantic_json_schema__(cls, _core_schema: Any, _handler: GetJsonSchemaHandler) -> dict[str, Any]:
-        return {"type": "string"}
-
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
+# Remove PyObjectId and use str for id fields
 
 class UserBase(BaseModel):
     email: str
@@ -26,6 +13,7 @@ class UserBase(BaseModel):
     is_active: bool = True
     is_superuser: bool = False
     role: str = Field(default="user", pattern="^(admin|user)$")
+    usersubscription: str = Field(default="free", pattern="^(free|starter|professional|enterprise)$")
 
     @validator('email')
     def validate_email(cls, v):
@@ -77,6 +65,7 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
     role: Optional[str] = None
+    usersubscription: Optional[str] = Field(None, pattern="^(free|starter|professional|enterprise)$")
     # Google OAuth fields for login
     google_id: Optional[str] = None
     google_email: Optional[str] = None
@@ -95,7 +84,7 @@ class UserUpdate(BaseModel):
         return v
 
 class UserInDB(UserBase):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(alias="_id")
     hashed_password: Optional[str] = None  # Made optional for Google OAuth users
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -139,6 +128,7 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     last_login: Optional[datetime] = None
+    usersubscription: str = "free"
     # Google OAuth fields for login
     google_id: Optional[str] = None
     google_email: Optional[str] = None

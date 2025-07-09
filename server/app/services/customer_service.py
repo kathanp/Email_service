@@ -34,6 +34,7 @@ class CustomerService:
                 detail="File import functionality not available"
             )
             
+        try:
             # Read file content
             content = await file.read()
             

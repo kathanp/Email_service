@@ -18,11 +18,12 @@ class AuthService:
         try:
             logger.info("Getting users collection from MongoDB...")
             collection = MongoDB.get_collection("users")
-            if collection:
+            if collection is not None:
                 logger.info("✅ SUCCESS: Users collection retrieved")
+                return collection
             else:
                 logger.warning("⚠️  WARNING: Users collection is None")
-            return collection
+                return None
         except Exception as e:
             logger.error(f"❌ ERROR: Failed to get users collection - {e}")
             logger.warning(f"Database not available: {e}")
@@ -40,8 +41,8 @@ class AuthService:
             logger.error(f"❌ ERROR: Error checking development mode - {e}")
             return True
 
-    async def register_user(self, user_data: UserCreate) -> UserResponse:
-        """Register a new user."""
+    async def register_user(self, user_data: UserCreate) -> dict:
+        """Register a new user and return access token."""
         logger.info("=" * 30)
         logger.info("AUTH SERVICE: register_user called")
         logger.info("=" * 30)
@@ -66,8 +67,16 @@ class AuthService:
                     google_name=None,
                     sender_email=None
                 )
+                
+                # Create access token for mock user
+                access_token = create_access_token(data={"sub": mock_user.email})
+                
                 logger.info(f"✅ SUCCESS: Mock user created - ID: {mock_user.id}")
-                return mock_user
+                return {
+                    "access_token": access_token,
+                    "token_type": "bearer",
+                    "user": mock_user
+                }
 
             logger.info("🔄 Production mode: Creating real user in database")
             users_collection = self._get_users_collection()
@@ -97,6 +106,7 @@ class AuthService:
             user_dict["created_at"] = datetime.utcnow()
             user_dict["is_active"] = True
             user_dict["settings"] = {}
+            user_dict["usersubscription"] = "free"  # Set default subscription to free
             
             # Remove plain password from dict
             if "password" in user_dict:
@@ -119,13 +129,21 @@ class AuthService:
                 created_at=created_user["created_at"],
                 last_login=created_user.get("last_login"),
                 is_active=created_user["is_active"],
+                usersubscription=created_user.get("usersubscription", "free"),
                 google_id=created_user.get("google_id"),
                 google_name=created_user.get("google_name"),
                 sender_email=created_user.get("sender_email")
             )
             
+            # Create access token
+            access_token = create_access_token(data={"sub": user_response.email})
+            
             logger.info(f"✅ SUCCESS: User registered successfully - ID: {user_response.id}")
-            return user_response
+            return {
+                "access_token": access_token,
+                "token_type": "bearer",
+                "user": user_response
+            }
 
         except HTTPException:
             raise
@@ -204,7 +222,8 @@ class AuthService:
                 "is_active": True,
                 "role": "user",
                 "settings": {},
-                "sender_email": None  # Will use AWS SES default sender email
+                "sender_email": None,  # Will use AWS SES default sender email
+                "usersubscription": "free" # Set default subscription to free
             }
 
             # Insert user into database
@@ -222,6 +241,7 @@ class AuthService:
                 created_at=created_user["created_at"],
                 last_login=created_user.get("last_login"),
                 is_active=created_user["is_active"],
+                usersubscription=created_user.get("usersubscription", "free"),
                 google_id=created_user.get("google_id"),
                 google_name=created_user.get("google_name"),
                 sender_email=created_user.get("sender_email")
@@ -272,6 +292,8 @@ class AuthService:
             if not user.get("is_active", True):
                 return None
 
+            # Convert ObjectId to string for Pydantic model
+            user["_id"] = str(user["_id"])
             return UserInDB(**user)
 
         except Exception as e:
@@ -371,6 +393,8 @@ class AuthService:
             if not user:
                 return None
             
+            # Convert ObjectId to string for Pydantic model
+            user["_id"] = str(user["_id"])
             return UserInDB(**user)
 
         except Exception as e:
@@ -404,6 +428,8 @@ class AuthService:
             if not user:
                 return None
             
+            # Convert ObjectId to string for Pydantic model
+            user["_id"] = str(user["_id"])
             return UserInDB(**user)
 
         except Exception as e:

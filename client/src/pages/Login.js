@@ -82,16 +82,32 @@ function AuthPage() {
 
       if (response.ok) {
         if (isLogin) {
+          console.log('Login successful, storing token:', data.access_token);
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
           setSuccess('Login successful! Redirecting...');
           navigate('/dashboard');
         } else {
           // After successful registration, automatically log the user in
+          console.log('Registration successful, storing token:', data.access_token);
+          console.log('User data:', data.user);
+          
+          // Store token and user data
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('user', JSON.stringify(data.user));
+          
+          // Verify token was stored correctly
+          const storedToken = localStorage.getItem('token');
+          const storedUser = localStorage.getItem('user');
+          console.log('Stored token:', storedToken);
+          console.log('Stored user:', storedUser);
+          
           setSuccess('Registration successful! Redirecting to dashboard...');
-          navigate('/dashboard');
+          
+          // Small delay to ensure storage is complete
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 100);
         }
       } else {
         setError(data.detail || (isLogin ? 'Login failed' : 'Registration failed'));

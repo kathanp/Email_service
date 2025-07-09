@@ -33,13 +33,39 @@ class SenderService:
     async def add_sender(self, user_id: str, sender_data: SenderCreate) -> Dict:
         """Add a new sender email for a user and initiate verification."""
         try:
-            # Check subscription limits first
-            limit_check = await self.subscription_service.check_sender_limit(user_id)
-            if not limit_check["allowed"]:
-                upgrade_message = await self.subscription_service.get_upgrade_message(user_id, "senders")
+            # Get user info for subscription check
+            users_collection = MongoDB.get_collection("users")
+            user_doc = await users_collection.find_one({"_id": ObjectId(user_id)})
+            if not user_doc:
                 return {
                     "success": False,
-                    "error": f"{limit_check['reason']}. {upgrade_message}"
+                    "error": "User not found"
+                }
+            
+            # Create UserResponse object for subscription service
+            from ..models.user import UserResponse
+            user = UserResponse(
+                id=str(user_doc["_id"]),
+                email=user_doc["email"],
+                username=user_doc.get("username"),
+                full_name=user_doc.get("full_name"),
+                role=user_doc["role"],
+                created_at=user_doc["created_at"],
+                last_login=user_doc.get("last_login"),
+                is_active=user_doc["is_active"],
+                usersubscription=user_doc.get("usersubscription", "free"),
+                google_id=user_doc.get("google_id"),
+                google_name=user_doc.get("google_name"),
+                sender_email=user_doc.get("sender_email")
+            )
+            
+            # Check subscription limits
+            limit_check = await self.subscription_service.check_sender_email_limit(user)
+            if not limit_check["can_add"]:
+                plan_limits = self.subscription_service.get_user_plan_limits(user)
+                return {
+                    "success": False,
+                    "error": f"You have reached the maximum number of sender emails ({plan_limits['sender_emails']}) for your {user.usersubscription} plan. Please upgrade to add more sender emails."
                 }
             
             # Check if sender already exists for this user

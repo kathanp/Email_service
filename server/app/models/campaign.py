@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field, ConfigDict, GetJsonSchemaHandler
-from typing import Optional, List, Dict, Any
+from typing import Optional, Any, List
 from datetime import datetime
 from bson import ObjectId
 
 class PyObjectId(ObjectId):
     @classmethod
-    def __get_pydantic_json_schema__(cls, _core_schema: Any, _handler: GetJsonSchemaHandler) -> dict[str, Any]:
+    def __get_pydantic_json_schema__(cls, _core_schema: Any, _handler: Any) -> dict[str, Any]:
         return {"type": "string"}
 
     @classmethod

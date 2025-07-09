@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
+    AWS_SES_SOURCE_EMAIL: str = os.getenv("AWS_SES_SOURCE_EMAIL", "patelkathan244@gmail.com")
     DEFAULT_SENDER_EMAIL: str = os.getenv("DEFAULT_SENDER_EMAIL", "sale.rrimp@gmail.com")
     
     # Google OAuth Configuration

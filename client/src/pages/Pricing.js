@@ -8,12 +8,34 @@ function Pricing() {
   const [currentSubscription, setCurrentSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [billingCycle, setBillingCycle] = useState('monthly');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchPlans();
     fetchCurrentSubscription();
+    
+    // Check for success parameter in URL (from payment success)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setSuccess('Payment successful! Your subscription has been upgraded.');
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Refresh current subscription data
+      fetchCurrentSubscription();
+    }
+  }, []);
+
+  // Add a listener for when user returns from payment
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh current subscription when user returns to the page
+      fetchCurrentSubscription();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const fetchPlans = async () => {
@@ -59,36 +81,13 @@ function Pricing() {
   const handleSubscribe = async (plan) => {
     setError('');
     
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          plan: plan.id,
-          billing_cycle: billingCycle
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        navigate('/pricing/subscribe', { 
-          state: { 
-            subscription: data,
-            plan: plan,
-            billingCycle: billingCycle
-          }
-        });
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to create subscription');
+    // Redirect to payment page instead of creating subscription immediately
+    navigate('/pricing/subscribe', { 
+      state: { 
+        plan: plan,
+        billingCycle: billingCycle
       }
-    } catch (error) {
-      setError('Network error creating subscription');
-    }
+    });
   };
 
   const isCurrentPlan = (plan) => {
@@ -108,9 +107,24 @@ function Pricing() {
       <div className="pricing-header">
         <h1>Choose Your Plan</h1>
         <p>Select the perfect plan for your email marketing needs</p>
+        <button 
+          onClick={fetchCurrentSubscription}
+          style={{
+            background: '#667eea',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          Refresh Plan Status
+        </button>
       </div>
 
       {error && <div className="error-message">{error}</div>}
+      {success && <div className="success-message">{success}</div>}
 
       <div className="billing-toggle">
         <span className={billingCycle === 'monthly' ? 'active' : ''}>Monthly</span>

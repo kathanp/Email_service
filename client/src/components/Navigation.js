@@ -12,8 +12,13 @@ function Navigation() {
   useEffect(() => {
     // Get user data from localStorage
     const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
+    if (userData && userData !== 'null' && userData !== 'undefined') {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        localStorage.removeItem('user');
+      }
     }
 
     // Listen for sidebar state changes
@@ -23,8 +28,13 @@ function Navigation() {
 
     // Check for sidebar state in localStorage
     const sidebarState = localStorage.getItem('sidebarCollapsed');
-    if (sidebarState) {
-      setIsSidebarCollapsed(JSON.parse(sidebarState));
+    if (sidebarState && sidebarState !== 'null' && sidebarState !== 'undefined') {
+      try {
+        setIsSidebarCollapsed(JSON.parse(sidebarState));
+      } catch (error) {
+        console.error('Error parsing sidebar state:', error);
+        localStorage.removeItem('sidebarCollapsed');
+      }
     }
 
     // Add event listener for sidebar toggle

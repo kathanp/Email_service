@@ -48,7 +48,8 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setFiles(data.files || []); // Extract files array from response
+        console.log('CustomerManager - Files response:', data);
+        setFiles(data || []); // Backend returns files array directly
       } else {
         setError('Failed to load files');
       }
@@ -68,7 +69,7 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data.templates || []); // Extract templates array from response
+        setTemplates(data || []); // Backend returns templates array directly
       } else {
         setError('Failed to load templates');
       }
@@ -88,10 +89,10 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        setSenders(data.senders || []); // Extract senders array from response
+        setSenders(data || []); // Backend returns senders array directly
         
         // Auto-select default sender if available
-        const defaultSender = data.senders && data.senders.find(sender => sender.is_default && sender.verification_status === 'verified');
+        const defaultSender = data && data.find(sender => sender.is_default && sender.verification_status === 'verified');
         if (defaultSender) {
           setSelectedSender(defaultSender.id);
         }
@@ -420,7 +421,7 @@ function AutonomousCampaign() {
                 <option value="">Select a contact file</option>
                 {Array.isArray(files) && files.map((file) => (
                   <option key={file.id} value={file.id}>
-                    {file.filename} ({file.contact_count} contacts)
+                    {file.filename} ({file.contacts_count || 0} contacts)
                   </option>
                 ))}
               </select>

@@ -1,181 +1,205 @@
-from datetime import datetime
-from typing import Dict, Optional
-from ..models.subscription import SUBSCRIPTION_PLANS, SubscriptionPlan
+from typing import Dict, Any, Optional
 from ..db.mongodb import MongoDB
+from ..models.user import UserResponse
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SubscriptionService:
     def __init__(self):
-        self.users_collection = MongoDB.get_collection("users")
-        self.campaigns_collection = MongoDB.get_collection("campaigns")
-        self.senders_collection = MongoDB.get_collection("senders")
-        self.templates_collection = MongoDB.get_collection("templates")
-
-    async def get_user_plan(self, user_id: str) -> SubscriptionPlan:
-        """Get user's current subscription plan."""
-        try:
-            user = await self.users_collection.find_one({"_id": user_id})
-            if not user:
-                return SubscriptionPlan.FREE
-            
-            subscription_data = user.get("subscription", {})
-            return subscription_data.get("plan", SubscriptionPlan.FREE)
-        except Exception as e:
-            logger.error(f"Error getting user plan: {e}")
-            return SubscriptionPlan.FREE
-
-    async def get_plan_limits(self, user_id: str) -> Dict:
-        """Get current plan limits for a user."""
-        plan = await self.get_user_plan(user_id)
-        plan_details = SUBSCRIPTION_PLANS[plan]
-        return {
-            "plan": plan,
-            "email_limit": plan_details.features.email_limit,
-            "sender_limit": plan_details.features.sender_limit,
-            "template_limit": plan_details.features.template_limit,
-            "api_access": plan_details.features.api_access,
-            "priority_support": plan_details.features.priority_support,
-            "white_label": plan_details.features.white_label,
-            "custom_integrations": plan_details.features.custom_integrations
+        self.plan_limits = {
+            "free": {
+                "emails_per_month": 100,
+                "sender_emails": 1,
+                "templates": 3,
+                "api_access": False,
+                "priority_support": False,
+                "white_label": False,
+                "custom_integrations": False
+            },
+            "starter": {
+                "emails_per_month": 1000,
+                "sender_emails": 3,
+                "templates": 10,
+                "api_access": False,
+                "priority_support": False,
+                "white_label": False,
+                "custom_integrations": False
+            },
+            "professional": {
+                "emails_per_month": 10000,
+                "sender_emails": 10,
+                "templates": 50,
+                "api_access": True,
+                "priority_support": True,
+                "white_label": False,
+                "custom_integrations": False
+            },
+            "enterprise": {
+                "emails_per_month": 50000,
+                "sender_emails": -1,  # Unlimited
+                "templates": -1,  # Unlimited
+                "api_access": True,
+                "priority_support": True,
+                "white_label": True,
+                "custom_integrations": True
+            }
         }
 
-    async def get_current_usage(self, user_id: str) -> Dict:
-        """Get current usage for a user."""
-        try:
-            # Calculate emails sent this month
-            now = datetime.utcnow()
-            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            
-            this_month_campaigns = await self.campaigns_collection.find({
-                "user_id": user_id,
-                "created_at": {"$gte": month_start}
-            }).to_list(length=None)
-            
-            emails_sent_this_month = sum(campaign.get("successful", 0) for campaign in this_month_campaigns)
-            
-            # Count senders
-            senders_count = await self.senders_collection.count_documents({"user_id": user_id})
-            
-            # Count templates
-            templates_count = await self.templates_collection.count_documents({"user_id": user_id})
-            
-            return {
-                "emails_sent_this_month": emails_sent_this_month,
-                "senders_count": senders_count,
-                "templates_count": templates_count
-            }
-        except Exception as e:
-            logger.error(f"Error calculating usage: {e}")
-            return {
-                "emails_sent_this_month": 0,
-                "senders_count": 0,
-                "templates_count": 0
-            }
+    def get_user_plan_limits(self, user: UserResponse) -> Dict[str, Any]:
+        """Get the limits for a user's current plan."""
+        plan = user.usersubscription or "free"
+        return self.plan_limits.get(plan, self.plan_limits["free"])
 
-    async def check_email_limit(self, user_id: str, emails_to_send: int) -> Dict:
-        """Check if user can send the specified number of emails."""
+    async def check_email_limit(self, user: UserResponse) -> Dict[str, Any]:
+        """Check if user can send more emails this month."""
         try:
-            limits = await self.get_plan_limits(user_id)
-            usage = await self.get_current_usage(user_id)
+            plan_limits = self.get_user_plan_limits(user)
+            emails_per_month = plan_limits["emails_per_month"]
             
-            if limits["email_limit"] == -1:  # Unlimited
-                return {"allowed": True, "reason": "Unlimited plan"}
+            if emails_per_month == -1:  # Unlimited
+                return {"can_send": True, "remaining": -1, "limit": -1}
             
-            total_after_send = usage["emails_sent_this_month"] + emails_to_send
+            # Get current month's email count
+            from datetime import datetime, timedelta
+            start_of_month = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             
-            if total_after_send <= limits["email_limit"]:
+            email_logs_collection = MongoDB.get_collection("email_logs")
+            if email_logs_collection:
+                sent_count = await email_logs_collection.count_documents({
+                    "user_id": user.id,
+                    "sent_at": {"$gte": start_of_month},
+                    "status": "sent"
+                })
+                
+                remaining = max(0, emails_per_month - sent_count)
+                can_send = remaining > 0
+                
                 return {
-                    "allowed": True,
-                    "reason": "Within limit",
-                    "current_usage": usage["emails_sent_this_month"],
-                    "limit": limits["email_limit"],
-                    "remaining": limits["email_limit"] - usage["emails_sent_this_month"]
+                    "can_send": can_send,
+                    "remaining": remaining,
+                    "limit": emails_per_month,
+                    "used": sent_count
                 }
             else:
-                return {
-                    "allowed": False,
-                    "reason": f"Would exceed monthly limit of {limits['email_limit']} emails",
-                    "current_usage": usage["emails_sent_this_month"],
-                    "limit": limits["email_limit"],
-                    "attempted": emails_to_send,
-                    "would_exceed_by": total_after_send - limits["email_limit"]
-                }
+                # If collection not available, assume can send
+                return {"can_send": True, "remaining": emails_per_month, "limit": emails_per_month, "used": 0}
+                
         except Exception as e:
             logger.error(f"Error checking email limit: {e}")
-            return {"allowed": False, "reason": "Error checking limits"}
+            return {"can_send": True, "remaining": 100, "limit": 100, "used": 0}
 
-    async def check_sender_limit(self, user_id: str) -> Dict:
-        """Check if user can add another sender."""
+    async def check_sender_email_limit(self, user: UserResponse) -> Dict[str, Any]:
+        """Check if user can add more sender emails."""
         try:
-            limits = await self.get_plan_limits(user_id)
-            usage = await self.get_current_usage(user_id)
+            plan_limits = self.get_user_plan_limits(user)
+            sender_emails_limit = plan_limits["sender_emails"]
             
-            if limits["sender_limit"] == -1:  # Unlimited
-                return {"allowed": True, "reason": "Unlimited plan"}
+            if sender_emails_limit == -1:  # Unlimited
+                return {"can_add": True, "remaining": -1, "limit": -1}
             
-            if usage["senders_count"] < limits["sender_limit"]:
+            # Get current sender email count
+            senders_collection = MongoDB.get_collection("senders")
+            if senders_collection:
+                current_count = await senders_collection.count_documents({
+                    "user_id": user.id,
+                    "is_active": True
+                })
+                
+                remaining = max(0, sender_emails_limit - current_count)
+                can_add = remaining > 0
+                
                 return {
-                    "allowed": True,
-                    "reason": "Within limit",
-                    "current_count": usage["senders_count"],
-                    "limit": limits["sender_limit"],
-                    "remaining": limits["sender_limit"] - usage["senders_count"]
+                    "can_add": can_add,
+                    "remaining": remaining,
+                    "limit": sender_emails_limit,
+                    "current": current_count
                 }
             else:
-                return {
-                    "allowed": False,
-                    "reason": f"Maximum {limits['sender_limit']} sender(s) allowed",
-                    "current_count": usage["senders_count"],
-                    "limit": limits["sender_limit"]
-                }
+                # If collection not available, assume can add
+                return {"can_add": True, "remaining": sender_emails_limit, "limit": sender_emails_limit, "current": 0}
+                
         except Exception as e:
-            logger.error(f"Error checking sender limit: {e}")
-            return {"allowed": False, "reason": "Error checking limits"}
+            logger.error(f"Error checking sender email limit: {e}")
+            return {"can_add": True, "remaining": 1, "limit": 1, "current": 0}
 
-    async def check_template_limit(self, user_id: str) -> Dict:
-        """Check if user can create another template."""
+    async def check_template_limit(self, user: UserResponse) -> Dict[str, Any]:
+        """Check if user can create more templates."""
         try:
-            limits = await self.get_plan_limits(user_id)
-            usage = await self.get_current_usage(user_id)
+            plan_limits = self.get_user_plan_limits(user)
+            templates_limit = plan_limits["templates"]
             
-            if limits["template_limit"] == -1:  # Unlimited
-                return {"allowed": True, "reason": "Unlimited plan"}
+            if templates_limit == -1:  # Unlimited
+                return {"can_create": True, "remaining": -1, "limit": -1}
             
-            if usage["templates_count"] < limits["template_limit"]:
+            # Get current template count
+            templates_collection = MongoDB.get_collection("templates")
+            if templates_collection:
+                current_count = await templates_collection.count_documents({
+                    "user_id": user.id,
+                    "is_active": True
+                })
+                
+                remaining = max(0, templates_limit - current_count)
+                can_create = remaining > 0
+                
                 return {
-                    "allowed": True,
-                    "reason": "Within limit",
-                    "current_count": usage["templates_count"],
-                    "limit": limits["template_limit"],
-                    "remaining": limits["template_limit"] - usage["templates_count"]
+                    "can_create": can_create,
+                    "remaining": remaining,
+                    "limit": templates_limit,
+                    "current": current_count
                 }
             else:
-                return {
-                    "allowed": False,
-                    "reason": f"Maximum {limits['template_limit']} template(s) allowed",
-                    "current_count": usage["templates_count"],
-                    "limit": limits["template_limit"]
-                }
+                # If collection not available, assume can create
+                return {"can_create": True, "remaining": templates_limit, "limit": templates_limit, "current": 0}
+                
         except Exception as e:
             logger.error(f"Error checking template limit: {e}")
-            return {"allowed": False, "reason": "Error checking limits"}
+            return {"can_create": True, "remaining": 3, "limit": 3, "current": 0}
 
-    async def get_upgrade_message(self, user_id: str, feature: str) -> str:
-        """Get upgrade message for when limits are exceeded."""
+    def check_api_access(self, user: UserResponse) -> bool:
+        """Check if user has API access."""
+        plan_limits = self.get_user_plan_limits(user)
+        return plan_limits["api_access"]
+
+    def check_priority_support(self, user: UserResponse) -> bool:
+        """Check if user has priority support."""
+        plan_limits = self.get_user_plan_limits(user)
+        return plan_limits["priority_support"]
+
+    async def update_user_subscription(self, user_id: str, new_plan: str) -> bool:
+        """Update user's subscription plan."""
         try:
-            limits = await self.get_plan_limits(user_id)
-            usage = await self.get_current_usage(user_id)
+            if new_plan not in self.plan_limits:
+                logger.error(f"Invalid plan: {new_plan}")
+                return False
             
-            if feature == "emails":
-                return f"You've used {usage['emails_sent_this_month']}/{limits['email_limit']} emails this month. Upgrade to send more emails."
-            elif feature == "senders":
-                return f"You have {usage['senders_count']}/{limits['sender_limit']} sender(s). Upgrade to add more sender emails."
-            elif feature == "templates":
-                return f"You have {usage['templates_count']}/{limits['template_limit']} template(s). Upgrade to create more templates."
+            users_collection = MongoDB.get_collection("users")
+            if users_collection:
+                from bson import ObjectId
+                result = await users_collection.update_one(
+                    {"_id": ObjectId(user_id)},
+                    {"$set": {"usersubscription": new_plan}}
+                )
+                
+                if result.modified_count > 0:
+                    logger.info(f"Updated user {user_id} subscription to {new_plan}")
+                    return True
+                else:
+                    logger.error(f"Failed to update user {user_id} subscription")
+                    return False
             else:
-                return "Upgrade your plan to access this feature."
+                logger.error("Users collection not available")
+                return False
+                
         except Exception as e:
-            logger.error(f"Error getting upgrade message: {e}")
-            return "Upgrade your plan to access this feature." 
+            logger.error(f"Error updating user subscription: {e}")
+            return False
+
+    def get_plan_features(self, plan: str) -> Dict[str, Any]:
+        """Get features for a specific plan."""
+        return self.plan_limits.get(plan, self.plan_limits["free"])
+
+    def get_all_plans(self) -> Dict[str, Dict[str, Any]]:
+        """Get all available plans with their features."""
+        return self.plan_limits 
