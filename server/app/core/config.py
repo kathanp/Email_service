@@ -4,7 +4,7 @@ from typing import Optional, List
 
 class Settings(BaseSettings):
     # MongoDB Configuration
-    MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb+srv://emailbotuser:Xa5EekvEr1cMEGUq@cluster0.wdvicn9.mongodb.net/emailbot?retryWrites=true&w=majority&appName=Cluster0")
+    MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb+srv://emailbotuser:Xa5EekvEr1cMEGUq@cluster0.wdvicn9.mongodb.net/emailbot?retryWrites=true&w=majority&appName=Cluster0&maxPoolSize=10&minPoolSize=1&maxIdleTimeMS=30000&connectTimeoutMS=10000&socketTimeoutMS=45000&serverSelectionTimeoutMS=5000&heartbeatFrequencyMS=10000&retryReads=true")
     DATABASE_NAME: str = os.getenv("DATABASE_NAME", "emailbot")
     
     # JWT Configuration

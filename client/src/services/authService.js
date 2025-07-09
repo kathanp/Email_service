@@ -10,7 +10,7 @@ export async function register({ name, email, password }) {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ full_name: name, email, password }),
   });
   if (!res.ok) throw new Error((await res.json()).detail || "Registration failed");
   return await res.json();

@@ -66,7 +66,7 @@ function AuthPage() {
       const endpoint = isLogin ? `${API_ENDPOINTS.AUTH}/login` : `${API_ENDPOINTS.AUTH}/register`;
       const body = isLogin 
         ? { email: formData.email, password: formData.password }
-        : { name: formData.name, email: formData.email, password: formData.password };
+        : { full_name: formData.name, email: formData.email, password: formData.password };
 
       const response = await fetch(endpoint, {
         method: 'POST',

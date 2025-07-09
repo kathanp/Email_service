@@ -95,3 +95,13 @@ class MongoDB:
     def get_collection(cls, collection_name: str):
         """Get collection instance."""
         return cls.database[collection_name]
+
+    @classmethod
+    def get_database_url(cls):
+        """Get database URL from settings."""
+        return settings.MONGODB_URL
+
+    @classmethod
+    def get_database_name(cls):
+        """Get database name from settings."""
+        return settings.DATABASE_NAME
