@@ -75,20 +75,6 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
     return v;
   };
 
-  const handleCardNumberChange = (e) => {
-    const formatted = formatCardNumber(e.target.value);
-    setCardNumber(formatted);
-    setCardType(detectCardType(formatted));
-  };
-
-  const handleExpiryChange = (e) => {
-    setExpiryDate(formatExpiry(e.target.value));
-  };
-
-  const handleCvcChange = (e) => {
-    setCvc(e.target.value.replace(/\D/g, '').substring(0, 4));
-  };
-
   const validateForm = () => {
     if (!cardNumber.replace(/\s/g, '').match(/^\d{13,19}$/)) {
       setError('Please enter a valid card number');
@@ -145,17 +131,6 @@ function StripePaymentForm({ plan, billingCycle, onSuccess, onError }) {
       setError('Network error. Please try again.');
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const getCardIcon = () => {
-    switch (cardType) {
-      case 'visa': return '💳';
-      case 'mastercard': return '💳';
-      case 'amex': return '💳';
-      case 'discover': return '💳';
-      case 'jcb': return '💳';
-      default: return '💳';
     }
   };
 
