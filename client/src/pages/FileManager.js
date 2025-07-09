@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './FileManager.css';
+import { useNavigate } from 'react-router-dom';
 
 function FileManager() {
   const [files, setFiles] = useState([]);
@@ -10,6 +11,7 @@ function FileManager() {
   const [uploading, setUploading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchFiles();
@@ -18,12 +20,8 @@ function FileManager() {
   const fetchFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token || token === 'undefined' || token === 'null' || token === '') {
-        setError('No valid authentication token found. Please log in again.');
-        // Clear invalid token
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setLoading(false);
+      if (!token) {
+        setError('No authentication token found');
         return;
       }
 
@@ -35,20 +33,16 @@ function FileManager() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Files response:', data);
         setFiles(data || []); // Backend returns files array directly
       } else if (response.status === 401) {
         setError('Authentication failed. Please log in again.');
-        // Clear invalid token
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        navigate('/login');
       } else {
         const errorData = await response.json().catch(() => ({}));
         setError(errorData.detail || 'Failed to load files');
       }
     } catch (error) {
-      console.error('Error fetching files:', error);
-      setError('Network error loading files. Please check your connection.');
+      setError('Network error loading files');
     } finally {
       setLoading(false);
     }
@@ -59,15 +53,8 @@ function FileManager() {
     if (!file) return;
 
     const token = localStorage.getItem('token');
-    console.log('File upload - Token from localStorage:', token);
-    console.log('File upload - Token type:', typeof token);
-    console.log('File upload - Token length:', token ? token.length : 0);
-    
-    if (!token || token === 'undefined' || token === 'null' || token === '') {
-      console.log('File upload - Invalid token detected');
-      setError('No valid authentication token found. Please log in again.');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (!token) {
+      setError('No authentication token found');
       return;
     }
 
@@ -78,8 +65,6 @@ function FileManager() {
     const formData = new FormData();
     formData.append('file', file);
 
-    console.log('File upload - Sending request with token:', token.substring(0, 20) + '...');
-
     try {
       const response = await fetch(`${API_ENDPOINTS.FILES}/upload`, {
         method: 'POST',
@@ -89,28 +74,20 @@ function FileManager() {
         body: formData
       });
 
-      console.log('File upload - Response status:', response.status);
-      console.log('File upload - Response headers:', response.headers);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('File upload - Success response:', data);
         setSuccess('File uploaded successfully!');
         e.target.value = ''; // Clear the input
         // Refresh files list to get the updated data
         fetchFiles();
       } else if (response.status === 401) {
-        console.log('File upload - 401 Unauthorized');
         setError('Authentication failed. Please log in again.');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        navigate('/login');
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.log('File upload - Error response:', errorData);
         setError(errorData.detail || 'Failed to upload file');
       }
     } catch (error) {
-      console.error('File upload - Network error:', error);
       setError('Network error uploading file');
     } finally {
       setUploading(false);
@@ -123,10 +100,8 @@ function FileManager() {
     }
 
     const token = localStorage.getItem('token');
-    if (!token || token === 'undefined' || token === 'null' || token === '') {
-      setError('No valid authentication token found. Please log in again.');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (!token) {
+      setError('No authentication token found');
       return;
     }
 
@@ -143,24 +118,20 @@ function FileManager() {
         setSuccess('File deleted successfully!');
       } else if (response.status === 401) {
         setError('Authentication failed. Please log in again.');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        navigate('/login');
       } else {
         const errorData = await response.json().catch(() => ({}));
         setError(errorData.detail || 'Failed to delete file');
       }
     } catch (error) {
-      console.error('Error deleting file:', error);
       setError('Network error deleting file');
     }
   };
 
   const handleProcessFile = async (fileId) => {
     const token = localStorage.getItem('token');
-    if (!token || token === 'undefined' || token === 'null' || token === '') {
-      setError('No valid authentication token found. Please log in again.');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (!token) {
+      setError('No authentication token found');
       return;
     }
 
@@ -180,24 +151,20 @@ function FileManager() {
         fetchFiles();
       } else if (response.status === 401) {
         setError('Authentication failed. Please log in again.');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        navigate('/login');
       } else {
         const errorData = await response.json().catch(() => ({}));
         setError(errorData.detail || 'Failed to process file');
       }
     } catch (error) {
-      console.error('Error processing file:', error);
       setError('Network error processing file');
     }
   };
 
   const handlePreviewFile = async (fileId) => {
     const token = localStorage.getItem('token');
-    if (!token || token === 'undefined' || token === 'null' || token === '') {
-      setError('No valid authentication token found. Please log in again.');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (!token) {
+      setError('No authentication token found');
       return;
     }
 
@@ -214,14 +181,12 @@ function FileManager() {
         setShowPreview(true);
       } else if (response.status === 401) {
         setError('Authentication failed. Please log in again.');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        navigate('/login');
       } else {
         const errorData = await response.json().catch(() => ({}));
         setError(errorData.detail || 'Failed to preview file');
       }
     } catch (error) {
-      console.error('Error previewing file:', error);
       setError('Network error previewing file');
     }
   };

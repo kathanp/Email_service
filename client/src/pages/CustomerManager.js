@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './CustomerManager.css';
+import { useNavigate } from 'react-router-dom';
 
 function AutonomousCampaign() {
   const [files, setFiles] = useState([]);
@@ -22,6 +23,7 @@ function AutonomousCampaign() {
   const [recentCampaigns, setRecentCampaigns] = useState([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'tile'
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchFiles();
@@ -48,12 +50,14 @@ function AutonomousCampaign() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('CustomerManager - Files response:', data);
-        setFiles(data || []); // Backend returns files array directly
+        setFiles(data || []);
+      } else if (response.status === 401) {
+        setError('Authentication failed. Please log in again.');
+        navigate('/login');
       } else {
         setError('Failed to load files');
       }
-    } catch (err) {
+    } catch (error) {
       setError('Network error loading files');
     }
   };
@@ -283,7 +287,7 @@ function AutonomousCampaign() {
           }
         }
       } catch (error) {
-        console.error('Error fetching campaign status:', error);
+        // console.error('Error fetching campaign status:', error); // Removed as per edit hint
       }
     }, 2000); // Poll every 2 seconds
 
@@ -312,10 +316,10 @@ function AutonomousCampaign() {
         const data = await response.json();
         setRecentCampaigns(data.campaigns || []); // Extract campaigns array from response
       } else {
-        console.error('Failed to load recent campaigns');
+        setError('Failed to load recent campaigns');
       }
-    } catch (err) {
-      console.error('Network error loading recent campaigns');
+    } catch (error) {
+      setError('Network error loading recent campaigns');
     } finally {
       setCampaignsLoading(false);
     }

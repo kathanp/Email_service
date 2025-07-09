@@ -56,12 +56,11 @@ export const fetchRecentCampaigns = async () => {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch campaigns');
+      throw new Error('Failed to fetch campaigns data');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching campaigns:', error);
-    return [];
+    throw new Error('Failed to fetch campaigns data');
   }
 }; 
