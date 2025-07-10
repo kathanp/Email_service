@@ -267,7 +267,7 @@ def get_files(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/files/upload")
-def upload_file(request: Request):
+async def upload_file(request: Request):
     """Upload a file."""
     try:
         db = get_database()
@@ -276,15 +276,27 @@ def upload_file(request: Request):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # For now, return a mock response with user-specific file info
+        # Get the request body to extract filename and file info
+        try:
+            body = await request.json()
+            filename = body.get("filename", "unknown_file.xlsx")
+            file_size = body.get("file_size", 1024)
+            file_type = body.get("file_type", "excel")
+        except:
+            # Fallback if JSON parsing fails
+            filename = "unknown_file.xlsx"
+            file_size = 1024
+            file_type = "excel"
+        
+        # Create file document with actual filename
         file_doc = {
             "user_id": str(user["_id"]),
-            "filename": "sample_file.xlsx",
-            "file_size": 1024,
+            "filename": filename,
+            "file_size": file_size,
             "upload_date": datetime.utcnow(),
             "processed": False,
             "contacts_count": 0,
-            "file_type": "excel"
+            "file_type": file_type
         }
         
         result = db.files.insert_one(file_doc)
