@@ -57,18 +57,24 @@ function FileManager() {
       return;
     }
 
+    // Read file content as base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result.split(',')[1]; // Remove data URL prefix
+
     try {
       const response = await fetch(`${API_ENDPOINTS.FILES}/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          filename: file.name,
-          file_size: file.size,
-          file_type: file.type
-        })
+          body: JSON.stringify({
+            filename: file.name,
+            file_size: file.size,
+            file_type: file.type,
+            file_data: base64Data
+          })
       });
 
       if (response.ok) {
@@ -84,6 +90,13 @@ function FileManager() {
     } catch (error) {
       setError('Network error during upload');
     }
+    };
+    
+    reader.onerror = () => {
+      setError('Failed to read file');
+    };
+    
+    reader.readAsDataURL(file);
   };
 
   const handleDeleteFile = async (fileId) => {
@@ -304,11 +317,6 @@ function FileManager() {
               <button onClick={closePreview} className="close-button">×</button>
             </div>
             <div className="preview-modal-content">
-              <div className="preview-info">
-                <p><strong>Total Contacts:</strong> {previewData.contacts ? previewData.contacts.length : 0}</p>
-                {previewData.file_id && <p><strong>File ID:</strong> {previewData.file_id}</p>}
-                {previewData.file_name && <p><strong>File Name:</strong> {previewData.file_name}</p>}
-              </div>
               <div className="preview-table-container">
                 {previewData.contacts && previewData.contacts.length > 0 ? (
                   <div>

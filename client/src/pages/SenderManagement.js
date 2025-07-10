@@ -25,7 +25,7 @@ function SenderManagement() {
       
       if (response.ok) {
         const data = await response.json();
-        setSenders(data || []);
+        setSenders(data.senders || []);
       } else {
         setError('Failed to load sender emails');
       }
@@ -49,7 +49,7 @@ function SenderManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SENDERS}/`, {
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,9 +60,9 @@ function SenderManagement() {
 
       if (response.ok) {
         const data = await response.json();
-        setSenders(prev => [...prev, data]);
+        setSenders(prev => [...prev, data.sender]);
         setNewSender({ email: '', name: '' });
-        setSuccess('Sender email added successfully! Verification email sent.');
+        setSuccess(data.message || 'Sender email added successfully! Verification email sent.');
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to add sender email');
@@ -122,6 +122,33 @@ function SenderManagement() {
       }
     } catch (error) {
       setError('Network error setting default sender email');
+    }
+  };
+
+  const handleVerifyStatus = async (senderId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/${senderId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSenders(prev => prev.map(sender => 
+          sender.id === senderId 
+            ? { ...sender, verification_status: data.verification_status }
+            : sender
+        ));
+        setSuccess(data.message || 'Verification status updated!');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to check verification status');
+      }
+    } catch (error) {
+      setError('Network error checking verification status');
     }
   };
 
@@ -227,13 +254,13 @@ function SenderManagement() {
             {Array.isArray(senders) && senders.map((sender) => (
               <div key={sender.id} className="sender-card">
                 <div className="sender-info">
-                  <h3>{sender.name}</h3>
+                  <h3>{sender.display_name || sender.email}</h3>
                   <p className="sender-email">{sender.email}</p>
                   <div className="sender-status">
                     <span 
                       className={`status-badge status-${getStatusColor(sender.verification_status)}`}
                     >
-                      {sender.verification_status}
+                      {sender.verification_status || 'unknown'}
                     </span>
                     {sender.is_default && (
                       <span className="default-badge">Default</span>
@@ -241,6 +268,13 @@ function SenderManagement() {
                   </div>
                 </div>
                 <div className="sender-actions">
+                  <button
+                    onClick={() => handleVerifyStatus(sender.id)}
+                    className="btn-secondary"
+                    title="Check verification status"
+                  >
+                    Check Status
+                  </button>
                   {sender.verification_status === 'verified' && !sender.is_default && (
                     <button
                       onClick={() => handleSetDefault(sender.id)}

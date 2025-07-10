@@ -11,6 +11,8 @@ function EmailTemplates() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { 
     templates, 
@@ -213,6 +215,17 @@ Template Variables to Replace:
     }
   };
 
+  const handlePreview = (template) => {
+    console.log('Preview template data:', template); // Debug log to see actual data
+    setPreviewTemplate(template);
+    setShowPreview(true);
+  };
+
+  const closePreview = () => {
+    setShowPreview(false);
+    setPreviewTemplate(null);
+  };
+
   useEffect(() => {
     // Start with empty template form
     setNewTemplate({ name: '', subject: '', body: '' });
@@ -318,7 +331,12 @@ Template Variables to Replace:
           ) : (
             <div className="templates-grid">
               {templates.map((template) => (
-                <div key={template.id} className={`template-card ${template.is_default ? 'default-template' : ''}`}>
+                <div 
+                  key={template.id} 
+                  className={`template-card ${template.is_default ? 'default-template' : ''}`}
+                  onClick={() => handlePreview(template)}
+                  title="Click to preview template"
+                >
                   <div className="template-header">
                     <h4>
                       {template.name}
@@ -326,14 +344,20 @@ Template Variables to Replace:
                     </h4>
                     <div className="template-actions-buttons">
                       <button
-                        onClick={() => handleSetTemplateAsDefault(template)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetTemplateAsDefault(template);
+                        }}
                         className={`set-default-button ${template.is_default ? 'is-default' : ''}`}
                         title={template.is_default ? 'Current default template' : 'Set as default'}
                       >
                         {template.is_default ? '⭐' : '☆'}
                       </button>
                       <button
-                        onClick={() => handleDelete(template.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(template.id);
+                        }}
                         className="delete-button"
                         title="Delete template"
                       >
@@ -359,6 +383,34 @@ Template Variables to Replace:
             </div>
           )}
         </div>
+
+        {/* Template Preview Modal */}
+        {showPreview && previewTemplate && (
+          <div className="preview-modal-overlay" onClick={closePreview}>
+            <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="preview-modal-header">
+                <h3>Template Preview: {previewTemplate.name}</h3>
+                <button onClick={closePreview} className="close-button">×</button>
+              </div>
+              <div className="preview-modal-content">
+                <div className="preview-section">
+                  <h4>Email Subject</h4>
+                  <div className="preview-subject">
+                    {previewTemplate.subject || previewTemplate.subject_line || 'No subject'}
+                  </div>
+                  <small style={{color: '#666'}}>Debug: Available fields: {Object.keys(previewTemplate).join(', ')}</small>
+                </div>
+                <div className="preview-section">
+                  <h4>Email Body</h4>
+                  <div className="preview-body">
+                    <pre>{previewTemplate.body || previewTemplate.content || previewTemplate.body_content || 'No content'}</pre>
+                  </div>
+                  <small style={{color: '#666'}}>Debug: subject={previewTemplate.subject}, body={previewTemplate.body}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import AuthPage from './pages/Login';
 import GoogleCallback from './pages/GoogleCallback';
 import Dashboard from './pages/Dashboard';
 import AutonomousCampaign from './pages/CustomerManager';
+import Campaign from './pages/Campaign';
 import EmailTemplates from './pages/EmailTemplates';
 import FileManager from './pages/FileManager';
 import SenderManagement from './pages/SenderManagement';
@@ -45,6 +46,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <AutonomousCampaign />
+                </Layout>
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/campaigns" 
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Campaign />
                 </Layout>
               </PrivateRoute>
             } 

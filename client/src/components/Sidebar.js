@@ -11,9 +11,10 @@ function Sidebar() {
   const sidebarItems = [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
     { path: '/files', label: 'Files', icon: File },
-    { path: '/customers', label: 'Campaigns', icon: Users },
+    { path: '/campaigns', label: 'Campaigns', icon: Users },
     { path: '/email-templates', label: 'Templates', icon: Mail },
     { path: '/sender-management', label: 'Senders', icon: Inbox },
+    { path: '/customers', label: 'Customers', icon: Users },
     { path: '/pricing', label: 'Pricing', icon: BarChart2 },
     { path: '/reports', label: 'Reports', icon: BarChart2 },
     { path: '/settings', label: 'Settings', icon: Settings }
