@@ -4,6 +4,7 @@ from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 from typing import Optional
 import pymongo
+from bson import ObjectId
 import bcrypt
 import jwt
 import os
@@ -254,6 +255,11 @@ def get_files(request: Request):
         for file in files:
             file["id"] = str(file["_id"])
             del file["_id"]
+            # Ensure all dates are serializable
+            if "upload_date" in file:
+                file["upload_date"] = file["upload_date"].isoformat()
+            if "processed_date" in file:
+                file["processed_date"] = file["processed_date"].isoformat()
         
         return {"files": files}
     except Exception as e:
@@ -284,6 +290,7 @@ def upload_file(request: Request):
         result = db.files.insert_one(file_doc)
         file_doc["id"] = str(result.inserted_id)
         del file_doc["_id"]
+        file_doc["upload_date"] = file_doc["upload_date"].isoformat()
         
         return {
             "message": "File uploaded successfully",
@@ -306,7 +313,7 @@ def delete_file(request: Request, file_id: str):
         
         # Ensure the file belongs to the user
         file = db.files.find_one({
-            "_id": file_id,
+            "_id": ObjectId(file_id),
             "user_id": str(user["_id"])
         })
         
@@ -314,7 +321,7 @@ def delete_file(request: Request, file_id: str):
             raise HTTPException(status_code=404, detail="File not found")
         
         # Delete the file
-        db.files.delete_one({"_id": file_id})
+        db.files.delete_one({"_id": ObjectId(file_id)})
         
         return {"message": "File deleted successfully"}
     except Exception as e:
@@ -333,7 +340,7 @@ def process_file(request: Request, file_id: str):
         
         # Ensure the file belongs to the user
         file = db.files.find_one({
-            "_id": file_id,
+            "_id": ObjectId(file_id),
             "user_id": str(user["_id"])
         })
         
@@ -345,7 +352,7 @@ def process_file(request: Request, file_id: str):
         
         # Update file status
         db.files.update_one(
-            {"_id": file_id},
+            {"_id": ObjectId(file_id)},
             {
                 "$set": {
                     "processed": True,
@@ -375,7 +382,7 @@ def preview_file(request: Request, file_id: str):
         
         # Ensure the file belongs to the user
         file = db.files.find_one({
-            "_id": file_id,
+            "_id": ObjectId(file_id),
             "user_id": str(user["_id"])
         })
         
@@ -418,6 +425,9 @@ def get_templates(request: Request):
         for template in templates:
             template["id"] = str(template["_id"])
             del template["_id"]
+            # Ensure all dates are serializable
+            if "created_at" in template:
+                template["created_at"] = template["created_at"].isoformat()
         
         return {"templates": templates}
     except Exception as e:
@@ -447,6 +457,7 @@ def create_template(request: Request):
         result = db.templates.insert_one(template_doc)
         template_doc["id"] = str(result.inserted_id)
         del template_doc["_id"]
+        template_doc["created_at"] = template_doc["created_at"].isoformat()
         
         return {
             "message": "Template created successfully",

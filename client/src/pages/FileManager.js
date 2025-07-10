@@ -28,7 +28,7 @@ function FileManager() {
 
       if (response.ok) {
         const data = await response.json();
-        setFiles(data || []); // Backend returns files array directly
+        setFiles(data.files || []); // Backend returns {files: [...]}
       } else if (response.status === 401) {
         setError('Authentication failed. Please log in again.');
         navigate('/login');
@@ -57,16 +57,18 @@ function FileManager() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
       const response = await fetch(`${API_ENDPOINTS.FILES}/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: formData
+        body: JSON.stringify({
+          filename: file.name,
+          file_size: file.size,
+          file_type: file.type
+        })
       });
 
       if (response.ok) {
