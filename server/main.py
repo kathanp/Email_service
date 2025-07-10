@@ -246,7 +246,15 @@ def get_files(request: Request):
         user = db.users.find_one({"email": email})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get only files belonging to this user
         files = list(db.files.find({"user_id": str(user["_id"])}))
+        
+        # Convert ObjectId to string for JSON serialization
+        for file in files:
+            file["id"] = str(file["_id"])
+            del file["_id"]
+        
         return {"files": files}
     except Exception as e:
         logger.error(f"Get files error: {str(e)}")
@@ -261,13 +269,134 @@ def upload_file(request: Request):
         user = db.users.find_one({"email": email})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        # For now, return a mock response
+        
+        # For now, return a mock response with user-specific file info
+        file_doc = {
+            "user_id": str(user["_id"]),
+            "filename": "sample_file.xlsx",
+            "file_size": 1024,
+            "upload_date": datetime.utcnow(),
+            "processed": False,
+            "contacts_count": 0,
+            "file_type": "excel"
+        }
+        
+        result = db.files.insert_one(file_doc)
+        file_doc["id"] = str(result.inserted_id)
+        del file_doc["_id"]
+        
         return {
-            "message": "File upload endpoint",
+            "message": "File uploaded successfully",
+            "file": file_doc,
             "user_id": str(user["_id"])
         }
     except Exception as e:
         logger.error(f"Upload file error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/files/{file_id}")
+def delete_file(request: Request, file_id: str):
+    """Delete a user's file."""
+    try:
+        db = get_database()
+        email = get_user_from_token(request)
+        user = db.users.find_one({"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Ensure the file belongs to the user
+        file = db.files.find_one({
+            "_id": file_id,
+            "user_id": str(user["_id"])
+        })
+        
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Delete the file
+        db.files.delete_one({"_id": file_id})
+        
+        return {"message": "File deleted successfully"}
+    except Exception as e:
+        logger.error(f"Delete file error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/files/{file_id}/process")
+def process_file(request: Request, file_id: str):
+    """Process a user's file."""
+    try:
+        db = get_database()
+        email = get_user_from_token(request)
+        user = db.users.find_one({"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Ensure the file belongs to the user
+        file = db.files.find_one({
+            "_id": file_id,
+            "user_id": str(user["_id"])
+        })
+        
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Mock processing - in real implementation, this would parse the file
+        contacts_count = 150  # Mock contact count
+        
+        # Update file status
+        db.files.update_one(
+            {"_id": file_id},
+            {
+                "$set": {
+                    "processed": True,
+                    "contacts_count": contacts_count,
+                    "processed_date": datetime.utcnow()
+                }
+            }
+        )
+        
+        return {
+            "message": "File processed successfully",
+            "contacts_count": contacts_count
+        }
+    except Exception as e:
+        logger.error(f"Process file error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/files/{file_id}/preview")
+def preview_file(request: Request, file_id: str):
+    """Preview a user's file."""
+    try:
+        db = get_database()
+        email = get_user_from_token(request)
+        user = db.users.find_one({"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Ensure the file belongs to the user
+        file = db.files.find_one({
+            "_id": file_id,
+            "user_id": str(user["_id"])
+        })
+        
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Mock preview data - in real implementation, this would read the file
+        mock_contacts = [
+            {"name": "John Doe", "email": "john@example.com", "phone": "123-456-7890"},
+            {"name": "Jane Smith", "email": "jane@example.com", "phone": "098-765-4321"},
+            {"name": "Bob Johnson", "email": "bob@example.com", "phone": "555-123-4567"}
+        ]
+        
+        return {
+            "file_id": str(file["_id"]),
+            "file_name": file.get("filename", "Unknown"),
+            "contacts": mock_contacts,
+            "total_contacts": file.get("contacts_count", len(mock_contacts))
+        }
+    except Exception as e:
+        logger.error(f"Preview file error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ===== TEMPLATE ENDPOINTS =====
@@ -281,10 +410,50 @@ def get_templates(request: Request):
         user = db.users.find_one({"email": email})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get only templates belonging to this user
         templates = list(db.templates.find({"user_id": str(user["_id"])}))
+        
+        # Convert ObjectId to string for JSON serialization
+        for template in templates:
+            template["id"] = str(template["_id"])
+            del template["_id"]
+        
         return {"templates": templates}
     except Exception as e:
         logger.error(f"Get templates error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/templates")
+def create_template(request: Request):
+    """Create a new template for the user."""
+    try:
+        db = get_database()
+        email = get_user_from_token(request)
+        user = db.users.find_one({"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Mock template creation
+        template_doc = {
+            "user_id": str(user["_id"]),
+            "name": "Sample Template",
+            "subject": "Welcome to our service!",
+            "content": "Hello {{name}},\n\nThank you for joining us!\n\nBest regards,\nYour Team",
+            "created_at": datetime.utcnow(),
+            "is_active": True
+        }
+        
+        result = db.templates.insert_one(template_doc)
+        template_doc["id"] = str(result.inserted_id)
+        del template_doc["_id"]
+        
+        return {
+            "message": "Template created successfully",
+            "template": template_doc
+        }
+    except Exception as e:
+        logger.error(f"Create template error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ===== SUBSCRIPTION ENDPOINTS =====
