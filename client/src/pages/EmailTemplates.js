@@ -216,7 +216,6 @@ Template Variables to Replace:
   };
 
   const handlePreview = (template) => {
-    console.log('Preview template data:', template); // Debug log to see actual data
     setPreviewTemplate(template);
     setShowPreview(true);
   };
