@@ -12,8 +12,9 @@ services:
         value: "3.11.0"
 
   # Frontend Static Site
-  - type: static
+  - type: web
     name: email-bot-frontend
+    runtime: static
     buildCommand: cd client && npm ci && npm run build
     staticPublishPath: ./client/build
     envVars:
