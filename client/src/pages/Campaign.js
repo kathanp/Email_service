@@ -544,7 +544,7 @@ function Campaign() {
                   disabled={campaign.frequency === 'once'}
                   placeholder={campaign.frequency === 'once' ? 'Not required for once campaigns' : ''}
                 />
-              </div>
+                </div>
             </div>
           </div>
 
@@ -606,13 +606,13 @@ function Campaign() {
                           <span className="detail-value">
                             {new Date(scheduledCampaign.scheduleTime).toLocaleString()}
                           </span>
-                        </div>
+            </div>
                         
                         <div className="detail-item">
                           <span className="detail-label">🔄 Frequency:</span>
                           <span className="detail-value">
                             {scheduledCampaign.frequency.charAt(0).toUpperCase() + scheduledCampaign.frequency.slice(1)}
-                          </span>
+              </span>
                         </div>
                         
                         <div className="detail-item">
@@ -669,8 +669,8 @@ function Campaign() {
                         <h4>{historyCampaign.name}</h4>
                         <span className={`status-badge ${historyCampaign.status.toLowerCase()}`}>
                           {historyCampaign.status}
-                        </span>
-                      </div>
+              </span>
+            </div>
                       <div className="campaign-date">
                         <span>Completed: {new Date(historyCampaign.completedAt).toLocaleDateString()}</span>
                       </div>
