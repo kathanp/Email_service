@@ -8,6 +8,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from botocore.exceptions import ClientError, BotoCoreError
 from ..core.config import settings
+from ..db.mongodb import MongoDB
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,17 @@ class SESManager:
             
             logger.info(f"Email sent successfully to {to_email} from {sender_email}. Message ID: {response['MessageId']}")
             
+            # Log successful email for subscription tracking
+            if user_id:
+                await self._log_email(
+                    user_id=user_id,
+                    to_email=to_email,
+                    sender_email=sender_email,
+                    subject=subject,
+                    message_id=response['MessageId'],
+                    status='sent'
+                )
+            
             return {
                 'success': True,
                 'message_id': response['MessageId'],
@@ -79,6 +91,19 @@ class SESManager:
             error_message = e.response['Error']['Message']
             logger.error(f"SES ClientError for {to_email} from {sender_email}: {error_code} - {error_message}")
             
+            # Log failed email for subscription tracking
+            if user_id:
+                await self._log_email(
+                    user_id=user_id,
+                    to_email=to_email,
+                    sender_email=sender_email,
+                    subject=subject,
+                    message_id=None,
+                    status='failed',
+                    error_code=error_code,
+                    error_message=error_message
+                )
+            
             return {
                 'success': False,
                 'error_code': error_code,
@@ -90,6 +115,20 @@ class SESManager:
             }
         except Exception as e:
             logger.error(f"Unexpected error sending email to {to_email} from {sender_email}: {e}")
+            
+            # Log failed email for subscription tracking
+            if user_id:
+                await self._log_email(
+                    user_id=user_id,
+                    to_email=to_email,
+                    sender_email=sender_email,
+                    subject=subject,
+                    message_id=None,
+                    status='failed',
+                    error_code='UNKNOWN_ERROR',
+                    error_message=str(e)
+                )
+            
             return {
                 'success': False,
                 'error_code': 'UNKNOWN_ERROR',
@@ -288,4 +327,40 @@ class SESManager:
                 'status': 'unhealthy',
                 'service': 'AWS SES',
                 'error': str(e)
-            } 
+            }
+
+    async def _log_email(self, user_id: str, to_email: str, sender_email: str, 
+                        subject: str, message_id: Optional[str] = None, 
+                        status: str = 'sent', error_code: Optional[str] = None, 
+                        error_message: Optional[str] = None) -> None:
+        """Log email for subscription tracking."""
+        try:
+            # Ensure user_id is provided
+            if not user_id:
+                logger.warning("No user_id provided for email logging, skipping")
+                return
+                
+            email_logs_collection = MongoDB.get_collection("email_logs")
+            if email_logs_collection is not None:
+                log_entry = {
+                    "user_id": str(user_id),  # Ensure string conversion
+                    "to_email": to_email,
+                    "sender_email": sender_email,
+                    "subject": subject or "No Subject",  # Handle None subject
+                    "message_id": message_id,
+                    "status": status,
+                    "sent_at": datetime.utcnow(),
+                    "error_code": error_code,
+                    "error_message": error_message
+                }
+                
+                result = await email_logs_collection.insert_one(log_entry)
+                if result and result.inserted_id:
+                    logger.debug(f"Email logged for user {user_id}: {status} to {to_email}")
+                else:
+                    logger.warning(f"Failed to insert email log for user {user_id}")
+            else:
+                logger.warning("Email logs collection not available, skipping email logging")
+        except Exception as e:
+            logger.error(f"Error logging email for user {user_id}: {e}")
+            # Don't raise exception here as email logging failure shouldn't break email sending 

@@ -55,6 +55,7 @@ class TemplateService:
     async def create_template(self, template_data: TemplateCreate) -> TemplateResponse:
         """Create a new email template."""
         try:
+            logger.info(f"📝 Creating template for user {template_data.user_id}: {template_data.name}")
             # Get user info for subscription check
             users_collection = MongoDB.get_collection("users")
             user_doc = await users_collection.find_one({"_id": ObjectId(template_data.user_id)})
@@ -112,6 +113,8 @@ class TemplateService:
             template_dict["is_active"] = True
             template_dict["is_default"] = template_dict.get("is_default", False)
 
+            logger.info(f"📝 Template data to save: {template_dict}")
+
             # If this template is being set as default, unset other defaults for this user
             if template_dict["is_default"]:
                 await templates_collection.update_many(
@@ -121,26 +124,29 @@ class TemplateService:
 
             # Insert template into database
             result = await templates_collection.insert_one(template_dict)
+            logger.info(f"✅ Template created with ID: {result.inserted_id}")
             
             # Get the created template
             created_template = await templates_collection.find_one({"_id": result.inserted_id})
+            logger.info(f"📝 Retrieved created template: {created_template}")
             
             return TemplateResponse(
                 id=str(created_template["_id"]),
                 name=created_template["name"],
                 subject=created_template["subject"],
-                body=created_template["body"],
+                content=created_template.get("content", ""),  # Use get to avoid KeyError
+                body=created_template.get("content", ""),  # Add body field for frontend compatibility
                 user_id=created_template["user_id"],
-                created_at=created_template["created_at"],
-                updated_at=created_template["updated_at"],
-                is_active=created_template["is_active"],
-                is_default=created_template["is_default"]
+                created_at=created_template.get("created_at", datetime.utcnow()),
+                updated_at=created_template.get("updated_at", datetime.utcnow()),
+                is_active=created_template.get("is_active", True),
+                is_default=created_template.get("is_default", False)
             )
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error creating template: {str(e)}")
+            logger.error(f"❌ Error creating template: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Template creation failed: {str(e)}"
@@ -149,6 +155,7 @@ class TemplateService:
     async def get_user_templates(self, user_id: str) -> List[TemplateResponse]:
         """Get all templates created by a user."""
         try:
+            logger.info(f"🔍 Fetching templates for user {user_id}")
             templates_collection = self._get_templates_collection()
             cursor = templates_collection.find({
                 "user_id": user_id,
@@ -156,23 +163,28 @@ class TemplateService:
             }).sort("created_at", -1)  # Sort by newest first
             
             templates = await cursor.to_list(length=None)
+            logger.info(f"📝 Found {len(templates)} templates for user {user_id}")
+            
+            for template in templates:
+                logger.info(f"  - {template.get('name', 'Unknown')} (ID: {template['_id']})")
             
             return [
                 TemplateResponse(
                     id=str(template["_id"]),
                     name=template["name"],
                     subject=template["subject"],
-                    body=template["body"],
+                    content=template.get("content", ""),  # Use get to avoid KeyError
+                    body=template.get("content", ""),  # Add body field for frontend compatibility
                     user_id=template["user_id"],
-                    created_at=template["created_at"],
-                    updated_at=template["updated_at"],
-                    is_active=template["is_active"],
+                    created_at=template.get("created_at", datetime.utcnow()),
+                    updated_at=template.get("updated_at", datetime.utcnow()),
+                    is_active=template.get("is_active", True),
                     is_default=template.get("is_default", False)
                 )
                 for template in templates
             ]
         except Exception as e:
-            logger.error(f"Error getting user templates: {str(e)}")
+            logger.error(f"❌ Error getting user templates: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error retrieving templates: {str(e)}"
@@ -206,11 +218,12 @@ class TemplateService:
                 id=str(template["_id"]),
                 name=template["name"],
                 subject=template["subject"],
-                body=template["body"],
+                content=template.get("content", ""),  # Use get to avoid KeyError
+                body=template.get("content", ""),  # Add body field for frontend compatibility
                 user_id=template["user_id"],
-                created_at=template["created_at"],
-                updated_at=template["updated_at"],
-                is_active=template["is_active"],
+                created_at=template.get("created_at", datetime.utcnow()),
+                updated_at=template.get("updated_at", datetime.utcnow()),
+                is_active=template.get("is_active", True),
                 is_default=template.get("is_default", False)
             )
         except HTTPException:
@@ -292,11 +305,12 @@ class TemplateService:
                 id=str(updated_template["_id"]),
                 name=updated_template["name"],
                 subject=updated_template["subject"],
-                body=updated_template["body"],
+                content=updated_template.get("content", ""),  # Use get to avoid KeyError
+                body=updated_template.get("content", ""),  # Add body field for frontend compatibility
                 user_id=updated_template["user_id"],
-                created_at=updated_template["created_at"],
-                updated_at=updated_template["updated_at"],
-                is_active=updated_template["is_active"],
+                created_at=updated_template.get("created_at", datetime.utcnow()),
+                updated_at=updated_template.get("updated_at", datetime.utcnow()),
+                is_active=updated_template.get("is_active", True),
                 is_default=updated_template.get("is_default", False)
             )
         except HTTPException:
@@ -405,7 +419,7 @@ class TemplateService:
                 id=str(updated_template["_id"]),
                 name=updated_template["name"],
                 subject=updated_template["subject"],
-                body=updated_template["body"],
+                content=updated_template.get("content", ""),  # Use get to avoid KeyError
                 user_id=updated_template["user_id"],
                 created_at=updated_template["created_at"],
                 updated_at=updated_template["updated_at"],

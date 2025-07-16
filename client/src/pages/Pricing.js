@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout';
 import { API_ENDPOINTS } from '../config';
 import './Pricing.css';
 
@@ -10,6 +11,7 @@ function Pricing() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [billingCycle, setBillingCycle] = useState('monthly');
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -83,7 +85,14 @@ function Pricing() {
   const handleSubscribe = async (plan) => {
     setError('');
     
-    // Redirect to payment page instead of creating subscription immediately
+    // Check if this is a downgrade to free plan
+    if (plan.id === 'free' && currentSubscription && currentSubscription.plan_id !== 'free') {
+      // Handle downgrade to free plan directly
+      await handleDowngradeToFree(plan);
+      return;
+    }
+    
+    // Redirect to payment page for paid plans
     navigate('/pricing/subscribe', { 
       state: { 
         plan: plan,
@@ -92,140 +101,225 @@ function Pricing() {
     });
   };
 
+  const handleDowngradeToFree = async (plan) => {
+    setError('');
+    
+    if (!window.confirm('Are you sure you want to downgrade to the Free plan? You will lose access to premium features.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_ENDPOINTS.SUBSCRIPTIONS_V1}/change-plan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          plan_id: 'free',
+          billing_cycle: billingCycle
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSuccess('Successfully downgraded to Free plan!');
+          // Refresh subscription data
+          await fetchCurrentSubscription();
+        } else {
+          setError(data.message || 'Failed to downgrade subscription');
+        }
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to downgrade subscription');
+      }
+    } catch (error) {
+      setError('Network error during downgrade. Please try again.');
+    }
+  };
+
   const isCurrentPlan = (plan) => {
-    return currentSubscription && currentSubscription.plan === plan.id;
+    return currentSubscription && currentSubscription.plan_id === plan.id;
+  };
+
+  const getPlanPrice = (plan) => {
+    return billingCycle === 'monthly' ? plan.price_monthly : plan.price_yearly;
+  };
+
+  const getSavingsPercentage = (monthly, yearly) => {
+    if (monthly === 0 || yearly === 0) return 0;
+    const monthlyCost = monthly * 12;
+    const savings = ((monthlyCost - yearly) / monthlyCost) * 100;
+    return Math.round(savings);
+  };
+
+  const formatFeatureValue = (value) => {
+    if (value === -1) return 'Unlimited';
+    if (typeof value === 'number') return value.toLocaleString();
+    return value;
+  };
+
+  const getPopularPlan = () => {
+    // Mark Professional as popular
+    return 'professional';
   };
 
   if (loading) {
     return (
-      <div className="pricing-container">
-        <div className="loading">Loading plans...</div>
-      </div>
+      <Layout>
+        <div className="pricing-loading">
+          <div className="loading-spinner"></div>
+          <p>Loading subscription plans...</p>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="pricing-container">
-      <div className="pricing-header">
-        <h1>Choose Your Plan</h1>
-        <p>Select the perfect plan for your email marketing needs</p>
-        <button 
-          onClick={fetchCurrentSubscription}
-          style={{
-            background: '#667eea',
-            color: 'white',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          Refresh Plan Status
-        </button>
-      </div>
+    <Layout>
+      <div className="pricing-container">
+        <div className="pricing-header">
+          <h1>Choose Your Perfect Plan</h1>
+          <p>Unlock the full potential of your email marketing campaigns with our flexible pricing options</p>
+          
 
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+        </div>
 
-      <div className="billing-toggle">
-        <span className={billingCycle === 'monthly' ? 'active' : ''}>Monthly</span>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={billingCycle === 'yearly'}
-            onChange={(e) => setBillingCycle(e.target.checked ? 'yearly' : 'monthly')}
-          />
-          <span className="slider"></span>
-        </label>
-        <span className={billingCycle === 'yearly' ? 'active' : ''}>Yearly</span>
-        {billingCycle === 'yearly' && <span className="save-badge">Save 20%</span>}
-      </div>
+        {error && (
+          <div className="message error-message">
+            <span className="message-icon">⚠️</span>
+            {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className="message success-message">
+            <span className="message-icon">✅</span>
+            {success}
+          </div>
+        )}
 
-      <div className="plans-grid">
-        {Array.isArray(plans) && plans.map((plan) => (
-          plan && (
-            <div 
-              key={plan.id} 
-              className={`plan-card ${isCurrentPlan(plan) ? 'current' : ''}`}
-            >
-              {isCurrentPlan(plan) && (
-                <div className="current-badge">Current Plan</div>
-              )}
-              
-              <div className="plan-header">
-                <h3>{plan.name || 'Unnamed Plan'}</h3>
-                <div className="price">
-                  <span className="currency">$</span>
-                  <span className="amount">
-                    {billingCycle === 'monthly' ? (plan.price_monthly || 0) : (plan.price_yearly || 0)}
-                  </span>
-                  <span className="period">/{billingCycle === 'monthly' ? 'mo' : 'year'}</span>
-                </div>
-              </div>
-
-              <div className="plan-features">
-                <div className="feature">
-                  <span className="feature-icon">📧</span>
-                  <span className="feature-text">
-                    {plan.features.email_limit === -1 ? 'Unlimited' : plan.features.email_limit.toLocaleString()} emails/month
-                  </span>
-                </div>
-                <div className="feature">
-                  <span className="feature-icon">📮</span>
-                  <span className="feature-text">
-                    {plan.features.sender_limit === -1 ? 'Unlimited' : plan.features.sender_limit} sender emails
-                  </span>
-                </div>
-                <div className="feature">
-                  <span className="feature-icon">📝</span>
-                  <span className="feature-text">
-                    {plan.features.template_limit === -1 ? 'Unlimited' : plan.features.template_limit} email templates
-                  </span>
-                </div>
-                {plan.features.api_access && (
-                  <div className="feature">
-                    <span className="feature-icon">🔌</span>
-                    <span className="feature-text">API Access</span>
-                  </div>
-                )}
-                {plan.features.priority_support && (
-                  <div className="feature">
-                    <span className="feature-icon">🎯</span>
-                    <span className="feature-text">Priority Support</span>
-                  </div>
-                )}
-                {plan.features.white_label && (
-                  <div className="feature">
-                    <span className="feature-icon">🏷️</span>
-                    <span className="feature-text">White Label</span>
-                  </div>
-                )}
-                {plan.features.custom_integrations && (
-                  <div className="feature">
-                    <span className="feature-icon">🔗</span>
-                    <span className="feature-text">Custom Integrations</span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                className={`plan-button ${isCurrentPlan(plan) ? 'current' : ''}`}
-                onClick={() => handleSubscribe(plan)}
-                disabled={isCurrentPlan(plan)}
-              >
-                {isCurrentPlan(plan) ? 'Current Plan' : 'Choose Plan'}
-              </button>
+        <div className="billing-toggle">
+          <span className={billingCycle === 'monthly' ? 'active' : ''}>Monthly</span>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={billingCycle === 'yearly'}
+              onChange={(e) => setBillingCycle(e.target.checked ? 'yearly' : 'monthly')}
+            />
+            <span className="slider"></span>
+          </label>
+          <span className={billingCycle === 'yearly' ? 'active' : ''}>Yearly</span>
+          {billingCycle === 'yearly' && (
+            <div className="savings-badge">
+              <span className="savings-text">Save up to 20%</span>
             </div>
-          )
-        ))}
-      </div>
+          )}
+        </div>
 
-      <div className="pricing-footer">
-        <p>All plans include email delivery, analytics, and customer support.</p>
-        <p>Need a custom plan? <a href="/contact">Contact us</a></p>
+        <div className="plans-grid">
+          {Array.isArray(plans) && plans.map((plan) => (
+            plan && (
+              <div 
+                key={plan.id} 
+                className={`plan-card ${isCurrentPlan(plan) ? 'current-plan' : ''} ${plan.id === getPopularPlan() ? 'popular-plan' : ''}`}
+              >
+                {plan.id === getPopularPlan() && (
+                  <div className="popular-badge">Most Popular</div>
+                )}
+                
+                {isCurrentPlan(plan) && (
+                  <div className="current-badge">Current Plan</div>
+                )}
+                
+                <div className="plan-header">
+                  <h3>{plan.name || 'Unnamed Plan'}</h3>
+                  <div className="plan-price">
+                    <span className="currency">$</span>
+                    <span className="amount">{getPlanPrice(plan)}</span>
+                    <span className="period">/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
+                  </div>
+                  {billingCycle === 'yearly' && plan.price_monthly > 0 && (
+                    <div className="savings-info">
+                      Save {getSavingsPercentage(plan.price_monthly, plan.price_yearly)}% annually
+                    </div>
+                  )}
+                </div>
+
+                <div className="plan-features">
+                  <div className="features-list">
+                    <ul>
+                      <li>
+                        <span className="feature-icon">📧</span>
+                        <span className="feature-text">{formatFeatureValue(plan.features.email_limit)}/mo emails</span>
+                      </li>
+                      <li>
+                        <span className="feature-icon">👤</span>
+                        <span className="feature-text">{formatFeatureValue(plan.features.sender_limit)} senders</span>
+                      </li>
+                      <li>
+                        <span className="feature-icon">📝</span>
+                        <span className="feature-text">{formatFeatureValue(plan.features.template_limit)} templates</span>
+                      </li>
+                      {plan.features.api_access && (
+                        <li>
+                          <span className="feature-icon">🔌</span>
+                          <span className="feature-text">API Access</span>
+                        </li>
+                      )}
+                      {plan.features.priority_support && (
+                        <li>
+                          <span className="feature-icon">⚡</span>
+                          <span className="feature-text">Priority Support</span>
+                        </li>
+                      )}
+                      {plan.features.white_label && (
+                        <li>
+                          <span className="feature-icon">🏷️</span>
+                          <span className="feature-text">White Label</span>
+                        </li>
+                      )}
+                      {plan.features.custom_integrations && (
+                        <li>
+                          <span className="feature-icon">🔗</span>
+                          <span className="feature-text">Custom Integrations</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="plan-action">
+                  <button
+                    className={`plan-button ${isCurrentPlan(plan) ? 'current' : plan.id === getPopularPlan() ? 'popular' : ''}`}
+                    onClick={() => handleSubscribe(plan)}
+                    disabled={isCurrentPlan(plan)}
+                  >
+                    {isCurrentPlan(plan) ? (
+                      <>
+                        <span className="button-icon">✓</span>
+                        Current Plan
+                      </>
+                    ) : (
+                      <>
+                        <span className="button-icon">
+                          {plan.id === 'free' && currentSubscription && currentSubscription.plan_id !== 'free' ? '⬇️' : '🚀'}
+                        </span>
+                        {plan.id === 'free' && currentSubscription && currentSubscription.plan_id !== 'free' 
+                          ? `Downgrade to ${plan.name}` 
+                          : `Choose ${plan.name}`}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )
+          ))}
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 }
 

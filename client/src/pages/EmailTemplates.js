@@ -135,7 +135,7 @@ Template Variables to Replace:
       setNewTemplate({
         name: defaultTemplate.name,
         subject: defaultTemplate.subject,
-        body: defaultTemplate.body
+        body: defaultTemplate.body || defaultTemplate.content  // Handle both field names
       });
       setSuccess(`Loaded default template: ${defaultTemplate.name}`);
     } else {
@@ -168,21 +168,19 @@ Template Variables to Replace:
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!newTemplate.name.trim() || !newTemplate.subject.trim() || !newTemplate.body.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
     setIsSubmitting(true);
     setError('');
     setSuccess('');
 
     try {
-      const result = await createTemplate({
+      const templateData = {
         name: newTemplate.name,
         subject: newTemplate.subject,
-        body: newTemplate.body
-      });
+        content: newTemplate.body,  // Send as 'content' to match backend
+        description: ''  // Add empty description field
+      };
+      
+      const result = await createTemplate(templateData);
 
       if (result.success) {
         setNewTemplate({ name: '', subject: '', body: '' });
@@ -287,7 +285,6 @@ Template Variables to Replace:
                 placeholder="Enter template name"
                 value={newTemplate.name}
                 onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
-                required
               />
             </div>
             
@@ -299,7 +296,6 @@ Template Variables to Replace:
                 placeholder="Enter email subject"
                 value={newTemplate.subject}
                 onChange={(e) => setNewTemplate({...newTemplate, subject: e.target.value})}
-                required
               />
             </div>
             
@@ -311,7 +307,6 @@ Template Variables to Replace:
                 value={newTemplate.body}
                 onChange={(e) => setNewTemplate({...newTemplate, body: e.target.value})}
                 rows="6"
-                required
               />
             </div>
             
@@ -369,9 +364,9 @@ Template Variables to Replace:
                       <strong>Subject:</strong> {template.subject}
                     </p>
                     <p className="template-body">
-                      <strong>Body:</strong> {template.body && template.body.length > 100 
-                        ? `${template.body.substring(0, 100)}...` 
-                        : template.body}
+                      <strong>Body:</strong> {(template.body || template.content) && (template.body || template.content).length > 100 
+                        ? `${(template.body || template.content).substring(0, 100)}...` 
+                        : (template.body || template.content)}
                     </p>
                     <p className="template-date">
                       Created: {formatDate(template.created_at)}
@@ -397,14 +392,12 @@ Template Variables to Replace:
                   <div className="preview-subject">
                     {previewTemplate.subject || previewTemplate.subject_line || 'No subject'}
                   </div>
-                  <small style={{color: '#666'}}>Debug: Available fields: {Object.keys(previewTemplate).join(', ')}</small>
                 </div>
                 <div className="preview-section">
                   <h4>Email Body</h4>
                   <div className="preview-body">
                     <pre>{previewTemplate.body || previewTemplate.content || previewTemplate.body_content || 'No content'}</pre>
                   </div>
-                  <small style={{color: '#666'}}>Debug: subject={previewTemplate.subject}, body={previewTemplate.body}</small>
                 </div>
               </div>
             </div>

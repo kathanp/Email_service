@@ -41,15 +41,9 @@
   text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.payment-header.compact .small {
+.payment-header.compact .smaller {
   font-size: 16px;
   opacity: 0.9;
-  margin: 0 0 4px 0;
-}
-
-.payment-header.compact .smaller {
-  font-size: 14px;
-  opacity: 0.8;
   margin: 0;
 }
 
@@ -57,163 +51,72 @@
 .payment-form.compact {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  padding: 25px;
+  padding: 30px;
   margin-bottom: 20px;
   position: relative;
   z-index: 1;
   backdrop-filter: blur(10px);
 }
 
-.payment-form.compact h3 {
-  color: #333;
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 20px 0;
-  text-align: center;
+/* Stripe Card Section */
+.stripe-card-section {
+  margin-bottom: 1.5rem;
 }
 
-/* Card Input Section */
-.card-input-section {
-  space-y: 20px;
-}
-
-.input-group {
-  margin-bottom: 20px;
-}
-
-.input-group label {
+.stripe-card-section label {
   display: block;
   font-weight: 600;
-  color: #555;
-  margin-bottom: 8px;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
 }
 
-/* Card Input Wrapper */
-.card-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.card-number-input,
-.expiry-input,
-.cvc-input,
-.cardholder-input,
-.zip-input {
-  width: 100%;
-  padding: 15px 16px;
-  border: 2px solid #e1e5e9;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+.stripe-card-element-wrapper {
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
   background: white;
-  color: #333;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
 }
 
-.card-number-input:focus,
-.expiry-input:focus,
-.cvc-input:focus,
-.cardholder-input:focus,
-.zip-input:focus {
-  outline: none;
+.stripe-card-element-wrapper:focus-within {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), 0 4px 12px rgba(102, 126, 234, 0.2);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.card-number-input::placeholder,
-.expiry-input::placeholder,
-.cvc-input::placeholder,
-.cardholder-input::placeholder,
-.zip-input::placeholder {
-  color: #999;
-  font-weight: 400;
+.stripe-card-element-wrapper .StripeElement {
+  width: 100%;
+  padding: 4px 0;
 }
 
-/* Card Type Icon */
-.card-type-icon {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  animation: slideIn 0.3s ease;
+.stripe-card-element-wrapper .StripeElement--focus {
+  outline: none;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50%) translateX(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
-}
-
-/* Card Details Row */
-.card-details-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
+.stripe-card-element-wrapper .StripeElement--invalid {
+  border-color: #ef4444;
 }
 
 /* Payment Button */
 .payment-button.compact {
   width: 100%;
-  padding: 16px 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
+  padding: 16px 24px;
   border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-top: 20px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-.payment-button.compact::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-  transition: left 0.5s;
-}
-
-.payment-button.compact:hover:not(:disabled)::before {
-  left: 100%;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .payment-button.compact:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-.payment-button.compact:active:not(:disabled) {
-  transform: translateY(0);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
 .payment-button.compact:disabled {
@@ -229,36 +132,55 @@
   z-index: 1;
 }
 
+.stripe-powered {
+  margin-bottom: 8px;
+}
+
+.stripe-powered .tiny {
+  font-size: 11px;
+  opacity: 0.8;
+  margin: 0;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .payment-footer.compact .tiny {
   font-size: 12px;
   opacity: 0.8;
-  margin: 5px 0;
+  margin: 4px 0 0 0;
   line-height: 1.4;
 }
 
 /* Error and Success Messages */
 .error-message.small {
-  background: rgba(220, 38, 38, 0.1);
-  color: #fecaca;
-  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  padding: 12px;
   border-radius: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
   font-size: 14px;
-  font-weight: 500;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  backdrop-filter: blur(10px);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  text-align: center;
 }
 
 .success-message.small {
   background: rgba(34, 197, 94, 0.1);
-  color: #bbf7d0;
-  padding: 12px 16px;
+  color: #059669;
+  padding: 12px;
   border-radius: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 16px;
   font-size: 14px;
-  font-weight: 500;
   border: 1px solid rgba(34, 197, 94, 0.2);
-  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-size: 16px;
 }
 
 /* Responsive Design */
@@ -275,61 +197,20 @@
     padding: 20px;
   }
   
-  .card-details-row {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  
   .payment-header.compact h2 {
     font-size: 24px;
   }
-}
 
-/* Loading Animation */
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: #667eea;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-/* Additional Enhancements */
-.payment-card.compact {
-  animation: fadeInUp 0.6s ease;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+  .payment-header.compact .smaller {
+    font-size: 14px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .stripe-card-element-wrapper {
+    padding: 12px;
   }
-}
-
-/* Input Focus Effects */
-.card-number-input:focus,
-.expiry-input:focus,
-.cvc-input:focus {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-}
-
-/* Card Type Specific Styling */
-.card-type-icon[data-type="visa"] {
-  background: linear-gradient(135deg, #1a1f71, #00539c);
-}
-
-.card-type-icon[data-type="mastercard"] {
-  background: linear-gradient(135deg, #eb001b, #f79e1b);
-}
-
-.card-type-icon[data-type="amex"] {
-  background: linear-gradient(135deg, #006fcf, #d4af37);
-}
-
-.card-type-icon[data-type="discover"] {
-  background: linear-gradient(135deg, #ff6000, #ff8c00);
+  
+  .payment-button.compact {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
 } 
