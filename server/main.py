@@ -10,8 +10,8 @@ import jwt
 import os
 import logging
 from datetime import datetime, timedelta
-#import pandas as pd
-#import io
+#import pandas as pd  # Removed for Vercel deployment
+import io
 import csv
 
 # Import routes
@@ -427,27 +427,27 @@ def process_file(request: Request, file_id: str):
             if file_type == "excel" or filename.lower().endswith(('.xlsx', '.xls')):
                 # Parse Excel file with sheet validation
                 try:
-#                    # Check number of sheets in Excel file
-#                    excel_file = pd.ExcelFile(io.BytesIO(file_data))
-#                    sheet_names = excel_file.sheet_names
-#                    
-#                    if len(sheet_names) == 0:
-#                        logger.error(f"No sheets found in Excel file {file_id}")
-#                        contacts_count = 0
-#                    elif len(sheet_names) > 1:
-#                        logger.error(f"Excel file {file_id} contains {len(sheet_names)} sheets. Only Excel files with exactly one sheet are supported.")
-#                        contacts_count = 0
-#                    else:
-#                        # Exactly one sheet found - process it
-#                        df = pd.read_excel(io.BytesIO(file_data))
-#                        # Clean the dataframe
-#                        df = df.dropna(how='all')  # Remove completely empty rows
-#                        contacts_count = len(df)
-#                        logger.info(f"Successfully processed Excel file with {contacts_count} contacts")
-#                        
-#                except Exception as excel_error:
-#                    logger.error(f"Error processing Excel file {file_id}: {str(excel_error)}")
-#                    contacts_count = 0
+                    # Check number of sheets in Excel file
+                    raise HTTPException(status_code=400, detail="Excel processing temporarily disabled")
+                    sheet_names = excel_file.sheet_names
+                    
+                    if len(sheet_names) == 0:
+                        logger.error(f"No sheets found in Excel file {file_id}")
+                        contacts_count = 0
+                    elif len(sheet_names) > 1:
+                        logger.error(f"Excel file {file_id} contains {len(sheet_names)} sheets. Only Excel files with exactly one sheet are supported.")
+                        contacts_count = 0
+                    else:
+                        # Exactly one sheet found - process it
+                        raise HTTPException(status_code=400, detail="Excel processing temporarily disabled")
+                        # Clean the dataframe
+                        df = df.dropna(how='all')  # Remove completely empty rows
+                        contacts_count = len(df)
+                        logger.info(f"Successfully processed Excel file with {contacts_count} contacts")
+                        
+                except Exception as excel_error:
+                    logger.error(f"Error processing Excel file {file_id}: {str(excel_error)}")
+                    contacts_count = 0
                 
             elif file_type == "pdf" or filename.lower().endswith('.pdf'):
                 # Parse PDF file with table detection
@@ -597,27 +597,27 @@ def preview_file(request: Request, file_id: str):
             if file_type == "excel" or filename.lower().endswith(('.xlsx', '.xls')):
                 # Parse Excel file with sheet validation
                 try:
-#                    # Check number of sheets in Excel file
-#                    excel_file = pd.ExcelFile(io.BytesIO(file_data))
-#                    sheet_names = excel_file.sheet_names
-#                    
-#                    if len(sheet_names) == 0:
-#                        contacts = [{"error": "No sheets found in Excel file"}]
-#                    elif len(sheet_names) > 1:
-#                        contacts = [{"error": f"Excel file contains {len(sheet_names)} sheets. Only Excel files with exactly one sheet are supported."}]
-#                    else:
-#                        # Exactly one sheet found - process it
-#                        df = pd.read_excel(io.BytesIO(file_data))
-#                        # Clean the dataframe
-#                        df = df.dropna(how='all')  # Remove completely empty rows
-#                        df = df.fillna('')  # Fill NaN values with empty strings
-#                        contacts = df.to_dict('records')
-#                        logger.info(f"Successfully extracted {len(contacts)} contacts from Excel sheet")
-#                        
-#                except Exception as excel_error:
-#                    logger.error(f"Error processing Excel file: {str(excel_error)}")
-#                    contacts = [{"error": f"Error processing Excel file: {str(excel_error)}"}]
-#                
+                    # Check number of sheets in Excel file
+                    raise HTTPException(status_code=400, detail="Excel processing temporarily disabled")
+                    sheet_names = excel_file.sheet_names
+                    
+                    if len(sheet_names) == 0:
+                        contacts = [{"error": "No sheets found in Excel file"}]
+                    elif len(sheet_names) > 1:
+                        contacts = [{"error": f"Excel file contains {len(sheet_names)} sheets. Only Excel files with exactly one sheet are supported."}]
+                    else:
+                        # Exactly one sheet found - process it
+                        raise HTTPException(status_code=400, detail="Excel processing temporarily disabled")
+                        # Clean the dataframe
+                        df = df.dropna(how='all')  # Remove completely empty rows
+                        df = df.fillna('')  # Fill NaN values with empty strings
+                        contacts = df.to_dict('records')
+                        logger.info(f"Successfully extracted {len(contacts)} contacts from Excel sheet")
+                        
+                except Exception as excel_error:
+                    logger.error(f"Error processing Excel file: {str(excel_error)}")
+                    contacts = [{"error": f"Error processing Excel file: {str(excel_error)}"}]
+                
             elif file_type == "pdf" or filename.lower().endswith('.pdf'):
                 # Parse PDF file with table detection
                 try:
