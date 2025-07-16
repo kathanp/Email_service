@@ -7,11 +7,19 @@ function SenderManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [newSender, setNewSender] = useState({ email: '', name: '' });
+  const [newSender, setNewSender] = useState({ email: '', display_name: '' });
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     fetchSenders();
+    
+    // Set up automatic refresh every 1 seconds to check for verification updates
+    const interval = setInterval(() => {
+      fetchSenders();
+    }, 1000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
   }, []);
 
   const fetchSenders = async () => {
@@ -25,7 +33,8 @@ function SenderManagement() {
       
       if (response.ok) {
         const data = await response.json();
-        setSenders(data.senders || []);
+        // Backend returns array directly, not wrapped in data.senders
+        setSenders(Array.isArray(data) ? data : []);
       } else {
         setError('Failed to load sender emails');
       }
@@ -38,7 +47,7 @@ function SenderManagement() {
 
   const handleAddSender = async (e) => {
     e.preventDefault();
-    if (!newSender.email || !newSender.name) {
+    if (!newSender.email || !newSender.display_name) {
       setError('Please fill in all fields');
       return;
     }
@@ -60,8 +69,9 @@ function SenderManagement() {
 
       if (response.ok) {
         const data = await response.json();
-        setSenders(prev => [...prev, data.sender]);
-        setNewSender({ email: '', name: '' });
+        // Refresh the senders list instead of trying to add to existing array
+        await fetchSenders();
+        setNewSender({ email: '', display_name: '' });
         setSuccess(data.message || 'Sender email added successfully! Verification email sent.');
       } else {
         const errorData = await response.json();
@@ -125,33 +135,6 @@ function SenderManagement() {
     }
   };
 
-  const handleVerifyStatus = async (senderId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_ENDPOINTS.SENDERS}/${senderId}/verify`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSenders(prev => prev.map(sender => 
-          sender.id === senderId 
-            ? { ...sender, verification_status: data.verification_status }
-            : sender
-        ));
-        setSuccess(data.message || 'Verification status updated!');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.detail || 'Failed to check verification status');
-      }
-    } catch (error) {
-      setError('Network error checking verification status');
-    }
-  };
-
   const handleResendVerification = async (senderId) => {
     try {
       const token = localStorage.getItem('token');
@@ -207,6 +190,9 @@ function SenderManagement() {
       {/* Add New Sender Form */}
       <div className="add-sender-form">
         <h2>Add New Sender Email</h2>
+        <p className="form-description">
+          Add a new sender email address. You'll need to verify it through AWS SES before you can use it to send campaigns.
+        </p>
         <form onSubmit={handleAddSender}>
           <div className="form-row">
             <div className="form-group">
@@ -214,8 +200,8 @@ function SenderManagement() {
               <input
                 type="text"
                 id="senderName"
-                value={newSender.name}
-                onChange={(e) => setNewSender({ ...newSender, name: e.target.value })}
+                value={newSender.display_name}
+                onChange={(e) => setNewSender({ ...newSender, display_name: e.target.value })}
                 placeholder="Enter sender name"
                 required
               />
@@ -240,11 +226,14 @@ function SenderManagement() {
             </button>
           </div>
         </form>
+
       </div>
 
       {/* Senders List */}
       <div className="senders-list">
-        <h2>Your Sender Emails</h2>
+        <div className="senders-header">
+          <h2>Your Sender Emails</h2>
+        </div>
         {(!senders || senders.length === 0) ? (
           <div className="no-senders">
             <p>No sender emails added yet. Add your first sender email above.</p>
@@ -254,11 +243,11 @@ function SenderManagement() {
             {Array.isArray(senders) && senders.map((sender) => (
               <div key={sender.id} className="sender-card">
                 <div className="sender-info">
-                  <h3>{sender.display_name || sender.email}</h3>
+                  <h3>{sender.display_name || sender.email || 'Unknown Sender'}</h3>
                   <p className="sender-email">{sender.email}</p>
                   <div className="sender-status">
                     <span 
-                      className={`status-badge status-${getStatusColor(sender.verification_status)}`}
+                      className={`status-badge status-${getStatusColor(sender.verification_status || 'unknown')}`}
                     >
                       {sender.verification_status || 'unknown'}
                     </span>
@@ -268,13 +257,6 @@ function SenderManagement() {
                   </div>
                 </div>
                 <div className="sender-actions">
-                  <button
-                    onClick={() => handleVerifyStatus(sender.id)}
-                    className="btn-secondary"
-                    title="Check verification status"
-                  >
-                    Check Status
-                  </button>
                   {sender.verification_status === 'verified' && !sender.is_default && (
                     <button
                       onClick={() => handleSetDefault(sender.id)}
@@ -291,14 +273,20 @@ function SenderManagement() {
                       Resend Verification
                     </button>
                   )}
-                  {!sender.is_default && (
+                  {sender.verification_status === 'failed' && (
                     <button
-                      onClick={() => handleDeleteSender(sender.id)}
-                      className="btn-danger"
+                      onClick={() => handleResendVerification(sender.id)}
+                      className="btn-secondary"
                     >
-                      Delete
+                      Retry Verification
                     </button>
                   )}
+                  <button
+                    onClick={() => handleDeleteSender(sender.id)}
+                    className="btn-danger"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

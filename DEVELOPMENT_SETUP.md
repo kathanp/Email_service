@@ -40,7 +40,7 @@ The backend uses default values for development, but you can set these environme
 
 ```bash
 # Optional: Set environment variables for development
-export MONGODB_URL="mongodb+srv://emailbotuser:Xa5EekvEr1cMEGUq@cluster0.wdvicn9.mongodb.net/emailbot?retryWrites=true&w=majority&appName=Cluster0"
+export MONGODB_URL="your_mongodb_connection_string_here"
 export DATABASE_NAME="emailbot"
 export SECRET_KEY="your-secret-key-change-this-in-production"
 ```

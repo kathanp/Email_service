@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
 
@@ -144,105 +144,121 @@ function AuthPage() {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1>{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
-          <p>{isLogin ? 'Sign in to your account' : 'Join us today'}</p>
-        </div>
-        
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
+    <div className="auth-container navbar-offset">
+      {/* Animated Background */}
+      <div className="animated-bg">
+        <div className="bg-blob bg-blob-1"></div>
+        <div className="bg-blob bg-blob-2"></div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          {!isLogin && (
-            <div className="form-group">
-              <label htmlFor="name">Full Name</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
+      <div className="auth-content">
+        <div className="auth-card">
+          {/* Back to Website Button */}
+          <Link to="/" className="back-to-website">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back to MailsFlow website</span>
+          </Link>
+          
+          <div className="auth-header">
+            <h1>{isLogin ? 'MailsFlow' : 'Create Account'}</h1>
+            <p>{isLogin ? 'Sign in to your account' : 'Join us today'}</p>
+          </div>
+          
+          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">{success}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            {!isLogin && (
+              <div className="form-group">
+                <label htmlFor="name">Full Name</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required={!isLogin}
+                  placeholder="Enter your full name"
+                />
+              </div>
+            )}
+              
+              <div className="form-group">
+              <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                id="email"
+                name="email"
+                value={formData.email}
                 onChange={handleInputChange}
-                required={!isLogin}
-                placeholder="Enter your full name"
+                required
+                placeholder="Enter your email"
               />
-            </div>
-          )}
-            
+              </div>
+              
             <div className="form-group">
-            <label htmlFor="email">Email</label>
-              <input
-                type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter your email"
-            />
-            </div>
-            
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-              <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter your password"
-            />
-            </div>
-            
-          {!isLogin && (
-            <div className="form-group">
-              <label htmlFor="confirmPassword">Confirm Password</label>
-              <input
+              <label htmlFor="password">Password</label>
+                <input
                 type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
+                id="password"
+                name="password"
+                value={formData.password}
                 onChange={handleInputChange}
-                required={!isLogin}
-                placeholder="Confirm your password"
+                required
+                placeholder="Enter your password"
               />
-            </div>
-          )}
+              </div>
+              
+            {!isLogin && (
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Confirm Password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required={!isLogin}
+                  placeholder="Confirm your password"
+                />
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              className="btn-primary auth-btn"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
+              </button>
+            </form>
+
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
 
           <button 
-            type="submit" 
-            className="btn-primary auth-btn"
-            disabled={isLoading}
+            onClick={handleGoogleLogin}
+            className="btn-google auth-btn"
+            disabled={isGoogleLoading}
           >
-            {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
-            </button>
-          </form>
+            {isGoogleLoading ? 'Loading...' : 'Continue with Google'}
+          </button>
 
-        <div className="auth-divider">
-          <span>or</span>
-        </div>
-
-        <button 
-          onClick={handleGoogleLogin}
-          className="btn-google auth-btn"
-          disabled={isGoogleLoading}
-        >
-          {isGoogleLoading ? 'Loading...' : 'Continue with Google'}
-        </button>
-
-        <div className="auth-footer">
-          <p>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button 
-              type="button" 
-              onClick={toggleMode}
-              className="link-button"
-            >
-              {isLogin ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
+          <div className="auth-footer">
+            <p>
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              <button 
+                type="button" 
+                onClick={toggleMode}
+                className="link-button"
+              >
+                {isLogin ? 'Sign up' : 'Sign in'}
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>

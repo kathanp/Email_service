@@ -81,6 +81,26 @@ class MongoDB:
             await cls.database.senders.create_index("is_default")
             await cls.database.senders.create_index("created_at")
             
+            # Billing cycles collection indexes
+            await cls.database.billing_cycles.create_index("user_id")
+            await cls.database.billing_cycles.create_index("period_start")
+            await cls.database.billing_cycles.create_index("period_end")
+            await cls.database.billing_cycles.create_index("plan_id")
+            await cls.database.billing_cycles.create_index("created_at")
+            
+            # Subscription logs collection indexes
+            await cls.database.subscription_logs.create_index("user_id")
+            await cls.database.subscription_logs.create_index("timestamp")
+            await cls.database.subscription_logs.create_index("change_type")
+            
+            # Payment methods collection indexes
+            await cls.database.payment_methods.create_index("user_id")
+            await cls.database.payment_methods.create_index("stripe_payment_method_id")
+            await cls.database.payment_methods.create_index("stripe_customer_id")
+            await cls.database.payment_methods.create_index("is_default")
+            await cls.database.payment_methods.create_index("is_active")
+            await cls.database.payment_methods.create_index("created_at")
+            
             logger.info("Database indexes created successfully")
             
         except Exception as e:

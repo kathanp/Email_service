@@ -1,1 +1,1 @@
-from . import auth, stats, files, templates, senders, customers 
+from . import auth, stats, files, templates, senders, folders, contacts 

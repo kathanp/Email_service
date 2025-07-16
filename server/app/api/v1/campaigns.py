@@ -261,13 +261,34 @@ async def create_and_send_campaign(
             )
         
         # Check subscription limits before sending
-        limit_check = await subscription_service.check_email_limit(str(current_user.id), len(emails))
-        if not limit_check["allowed"]:
-            upgrade_message = await subscription_service.get_upgrade_message(str(current_user.id), "emails")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"{limit_check['reason']}. {upgrade_message}"
-            )
+        limit_check = await subscription_service.check_email_limit(current_user)
+        if not limit_check["can_send"]:
+            # Check if user needs more emails than remaining
+            remaining = limit_check.get("remaining", 0)
+            if len(emails) > remaining:
+                # Get upgrade message
+                try:
+                    upgrade_message = await subscription_service.get_upgrade_message(str(current_user.id), "emails")
+                except:
+                    upgrade_message = "Please upgrade your plan to send more emails."
+                
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Not enough email quota. You need {len(emails)} emails but only have {remaining} remaining. {upgrade_message}"
+                )
+        else:
+            # Check if user has enough emails remaining
+            remaining = limit_check.get("remaining", -1)
+            if remaining != -1 and len(emails) > remaining:
+                try:
+                    upgrade_message = await subscription_service.get_upgrade_message(str(current_user.id), "emails")
+                except:
+                    upgrade_message = "Please upgrade your plan to send more emails."
+                
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Not enough email quota. You need {len(emails)} emails but only have {remaining} remaining. {upgrade_message}"
+                )
         
         # Create campaign record
         campaign_collection = MongoDB.get_collection("campaigns")
@@ -280,7 +301,7 @@ async def create_and_send_campaign(
             "custom_message": campaign_data.custom_message,
             "sender_email": sender_email,
             "status": "sending",
-            "total_emails": 0,
+            "total_emails": len(emails),
             "successful": 0,
             "failed": 0,
             "start_time": datetime.utcnow(),
@@ -290,12 +311,6 @@ async def create_and_send_campaign(
         
         campaign_result = await campaign_collection.insert_one(campaign_dict)
         campaign_id = str(campaign_result.inserted_id)
-        
-        # Update campaign with total emails count
-        await campaign_collection.update_one(
-            {"_id": campaign_result.inserted_id},
-            {"$set": {"total_emails": len(emails)}}
-        )
         
         # Send bulk emails using AWS SES with user's verified sender email
         logger.info(f"Starting mass email campaign for {len(emails)} recipients from {sender_email}")
@@ -325,12 +340,23 @@ async def create_and_send_campaign(
         updated_campaign = await campaign_collection.find_one({"_id": campaign_result.inserted_id})
         
         return CampaignResponse(
-            campaign_id=campaign_id,
+            id=str(updated_campaign["_id"]),
+            name=updated_campaign["name"],
+            user_id=updated_campaign["user_id"],
+            template_id=updated_campaign["template_id"],
+            file_id=updated_campaign["file_id"],
+            subject_override=updated_campaign.get("subject_override"),
+            custom_message=updated_campaign.get("custom_message"),
+            status=updated_campaign["status"],
             total_emails=updated_campaign["total_emails"],
             successful=updated_campaign["successful"],
             failed=updated_campaign["failed"],
-            duration=updated_campaign["duration"],
-            status=updated_campaign["status"]
+            start_time=updated_campaign["start_time"],
+            end_time=updated_campaign.get("end_time"),
+            duration=updated_campaign.get("duration"),
+            created_at=updated_campaign["created_at"],
+            updated_at=updated_campaign["updated_at"],
+            error_message=updated_campaign.get("error_message")
         )
         
     except HTTPException:
@@ -340,6 +366,99 @@ async def create_and_send_campaign(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Campaign failed: {str(e)}"
+        )
+
+@router.get("/", response_model=List[CampaignResponse])
+async def get_user_campaigns(
+    current_user: UserResponse = Depends(get_current_user),
+    limit: int = 20,
+    skip: int = 0
+):
+    """Get all campaigns for the current user."""
+    try:
+        campaign_collection = MongoDB.get_collection("campaigns")
+        
+        # Get campaigns for the user, sorted by creation date (newest first)
+        campaigns_cursor = campaign_collection.find({
+            "user_id": current_user.id
+        }).sort("created_at", -1).skip(skip).limit(limit)
+        
+        campaigns = []
+        async for campaign in campaigns_cursor:
+            campaigns.append(CampaignResponse(
+                id=str(campaign["_id"]),
+                name=campaign["name"],
+                user_id=campaign["user_id"],
+                template_id=campaign["template_id"],
+                file_id=campaign["file_id"],
+                subject_override=campaign.get("subject_override"),
+                custom_message=campaign.get("custom_message"),
+                status=campaign["status"],
+                total_emails=campaign["total_emails"],
+                successful=campaign["successful"],
+                failed=campaign["failed"],
+                start_time=campaign.get("start_time"),
+                end_time=campaign.get("end_time"),
+                duration=campaign.get("duration"),
+                created_at=campaign["created_at"],
+                updated_at=campaign["updated_at"],
+                error_message=campaign.get("error_message")
+            ))
+        
+        return campaigns
+        
+    except Exception as e:
+        logger.error(f"Error fetching campaigns: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch campaigns: {str(e)}"
+        )
+
+@router.get("/history", response_model=List[CampaignResponse])
+async def get_campaign_history(
+    current_user: UserResponse = Depends(get_current_user),
+    limit: int = 20,
+    skip: int = 0
+):
+    """Get completed campaigns for Campaign History."""
+    try:
+        campaign_collection = MongoDB.get_collection("campaigns")
+        
+        # Get only completed campaigns for the user, sorted by end_time (newest first)
+        campaigns_cursor = campaign_collection.find({
+            "user_id": current_user.id,
+            "status": "completed"
+        }).sort("end_time", -1).skip(skip).limit(limit)
+        
+        campaigns = []
+        async for campaign in campaigns_cursor:
+            campaigns.append(CampaignResponse(
+                id=str(campaign["_id"]),
+                name=campaign["name"],
+                user_id=campaign["user_id"],
+                template_id=campaign["template_id"],
+                file_id=campaign["file_id"],
+                subject_override=campaign.get("subject_override"),
+                custom_message=campaign.get("custom_message"),
+                status=campaign["status"],
+                total_emails=campaign["total_emails"],
+                successful=campaign["successful"],
+                failed=campaign["failed"],
+                start_time=campaign.get("start_time"),
+                end_time=campaign.get("end_time"),
+                duration=campaign.get("duration"),
+                created_at=campaign["created_at"],
+                updated_at=campaign["updated_at"],
+                error_message=campaign.get("error_message")
+            ))
+        
+        return campaigns
+        
+    except Exception as e:
+        logger.error(f"Error fetching campaign history: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch campaign history: {str(e)}"
         )
 
 @router.post("/send-mass-email", response_model=CampaignResponse)

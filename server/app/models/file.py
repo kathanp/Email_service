@@ -23,6 +23,7 @@ class FileBase(BaseModel):
     file_type: str = Field(..., description="File type (excel, pdf, etc.)")
     file_size: int = Field(..., description="File size in bytes")
     description: Optional[str] = Field(None, description="File description")
+    folder_id: Optional[str] = Field(None, description="Folder ID for organization")
 
 class FileCreate(FileBase):
     user_id: str = Field(..., description="User ID who uploaded the file")
@@ -30,6 +31,7 @@ class FileCreate(FileBase):
 
 class FileUpdate(BaseModel):
     description: Optional[str] = Field(None, description="File description")
+    folder_id: Optional[str] = Field(None, description="Folder ID for organization")
 
 class FileInDB(FileBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")

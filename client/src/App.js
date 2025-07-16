@@ -5,7 +5,6 @@ import Layout from './components/Layout';
 import AuthPage from './pages/Login';
 import GoogleCallback from './pages/GoogleCallback';
 import Dashboard from './pages/Dashboard';
-import AutonomousCampaign from './pages/CustomerManager';
 import Campaign from './pages/Campaign';
 import EmailTemplates from './pages/EmailTemplates';
 import FileManager from './pages/FileManager';
@@ -14,20 +13,29 @@ import Pricing from './pages/Pricing';
 import SubscriptionSummary from './pages/SubscriptionSummary';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import Landing from './static/pages/Landing';
+import Contact from './static/pages/Contact';
+import Features from './static/pages/Features';
+import StaticPricing from './static/pages/staticPricing';
+
 
 function App() {
   return (
     <AppProvider>
       <Router>
         <Routes>
-          {/* Root path - shows auth page for guests, redirects to dashboard for authenticated users */}
-          <Route path="/" element={<AuthPage />} />
+          {/* Website Pages */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/staticPricing" element={<StaticPricing />} />
           
           {/* Auth routes */}
           <Route path="/login" element={<AuthPage />} />
           <Route path="/register" element={<AuthPage />} />
           <Route path="/auth/callback" element={<GoogleCallback />} />
           <Route path="/google-login-success" element={<AuthPage />} />
+          <Route path="/pricing" element={<Pricing />} /> 
           
           {/* Protected routes - require authentication */}
           <Route 
@@ -36,16 +44,6 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Dashboard />
-                </Layout>
-              </PrivateRoute>
-            } 
-          />
-          <Route 
-            path="/customers" 
-            element={
-              <PrivateRoute>
-                <Layout>
-                  <AutonomousCampaign />
                 </Layout>
               </PrivateRoute>
             } 
@@ -131,8 +129,8 @@ function App() {
             } 
           />
           
-          {/* Catch all - redirect to root */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Catch all - redirect to landing */}
+          <Route path="*" element={<Navigate to="/landing" replace />} />
         </Routes>
       </Router>
     </AppProvider>

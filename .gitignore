@@ -18,16 +18,36 @@ build/
 .env.local
 .env.production
 .env.development
+.env.staging
+.env.test
 *.env
-server/.env
-client/.env
-client/.env.production
+server/.env*
+client/.env*
 credentials.json
 token.json
 verified_senders.json
 *.log
 backend.log
 frontend.log
+
+# AWS and cloud credentials
+aws_credentials
+aws_config
+*.pem
+*.key
+*.secret
+*aws_env_setup.txt
+*test_aws_ses.py
+
+# OAuth and API keys
+google_credentials.json
+client_secret*.json
+oauth_token.json
+
+# Database dumps and backups
+*.sql
+*.dump
+*.backup
 
 # Vercel
 .vercel/
@@ -40,12 +60,6 @@ Thumbs.db
 *.tmp
 *.temp
 
-# Ignore environment and secret files
-.env
-*.env
-*aws_env_setup.txt
-*test_aws_ses.py
-*.key
-*.pem
-*.secret
-.env*.local
+# Environment and secret files (redundant but safe)
+.env*
+*.env*

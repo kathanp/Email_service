@@ -36,6 +36,7 @@ export const AppProvider = ({ children }) => {
 
   const apiRequest = useCallback(async (url, options = {}) => {
     const token = localStorage.getItem('token');
+    
     const config = {
       ...options,
       headers: {
@@ -147,7 +148,9 @@ export const AppProvider = ({ children }) => {
       const response = await apiRequest(`${API_ENDPOINTS.TEMPLATES}`);
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data.templates || []); // Extract templates array from response
+        setTemplates(data || []); // Backend returns direct array, not {templates: [...]}
+      } else {
+        await response.json().catch(() => ({}));
       }
     } catch (error) {
       // Error handling without console
@@ -163,7 +166,7 @@ export const AppProvider = ({ children }) => {
       
       if (response.ok) {
         const newTemplate = await response.json();
-        setTemplates(prev => [...prev, newTemplate]);
+        setTemplates(prev => [...(prev || []), newTemplate]);
         return { success: true, template: newTemplate };
       } else {
         const errorData = await response.json();
@@ -183,7 +186,7 @@ export const AppProvider = ({ children }) => {
       
       if (response.ok) {
         const updatedTemplate = await response.json();
-        setTemplates(prev => prev.map(t => t.id === templateId ? updatedTemplate : t));
+        setTemplates(prev => (prev || []).map(t => t.id === templateId ? updatedTemplate : t));
         return { success: true, template: updatedTemplate };
       } else {
         const errorData = await response.json();
@@ -202,7 +205,7 @@ export const AppProvider = ({ children }) => {
       
       if (response.ok) {
         const updatedTemplate = await response.json();
-        setTemplates(prev => prev.map(t => ({
+        setTemplates(prev => (prev || []).map(t => ({
           ...t,
           is_default: t.id === templateId
         })));
@@ -223,7 +226,7 @@ export const AppProvider = ({ children }) => {
       });
       
       if (response.ok) {
-        setTemplates(prev => prev.filter(t => t.id !== templateId));
+        setTemplates(prev => (prev || []).filter(t => t.id !== templateId));
         return { success: true };
       } else {
         const errorData = await response.json();

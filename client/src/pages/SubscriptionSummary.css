@@ -154,6 +154,26 @@
   box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
 }
 
+.loading {
+  text-align: center;
+  padding: 3rem;
+  color: #667eea;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.error-message {
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: 1px solid #fecaca;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .subscription-summary {

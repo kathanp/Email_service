@@ -33,14 +33,36 @@ class SenderService:
     async def add_sender(self, user_id: str, sender_data: SenderCreate) -> Dict:
         """Add a new sender email for a user and initiate verification."""
         try:
+            logger.info(f"Adding sender for user_id: {user_id}")
+            
             # Get user info for subscription check
             users_collection = MongoDB.get_collection("users")
-            user_doc = await users_collection.find_one({"_id": ObjectId(user_id)})
+            if users_collection is None:
+                logger.error("Users collection not available")
+                return {
+                    "success": False,
+                    "error": "Database connection error"
+                }
+            
+            # Convert user_id to ObjectId for MongoDB query
+            try:
+                user_object_id = ObjectId(user_id)
+            except Exception as e:
+                logger.error(f"Invalid user_id format: {user_id}, error: {e}")
+                return {
+                    "success": False,
+                    "error": "Invalid user ID format"
+                }
+            
+            user_doc = await users_collection.find_one({"_id": user_object_id})
             if not user_doc:
+                logger.error(f"User not found with ID: {user_id}")
                 return {
                     "success": False,
                     "error": "User not found"
                 }
+            
+            logger.info(f"User found: {user_doc.get('email')}")
             
             # Create UserResponse object for subscription service
             from ..models.user import UserResponse
@@ -49,10 +71,10 @@ class SenderService:
                 email=user_doc["email"],
                 username=user_doc.get("username"),
                 full_name=user_doc.get("full_name"),
-                role=user_doc["role"],
-                created_at=user_doc["created_at"],
+                role=user_doc.get("role", "user"),
+                created_at=user_doc.get("created_at", datetime.utcnow()),
                 last_login=user_doc.get("last_login"),
-                is_active=user_doc["is_active"],
+                is_active=user_doc.get("is_active", True),
                 usersubscription=user_doc.get("usersubscription", "free"),
                 google_id=user_doc.get("google_id"),
                 google_name=user_doc.get("google_name"),
@@ -101,9 +123,13 @@ class SenderService:
             # Insert sender document
             result = await self.collection.insert_one(sender_doc)
             sender_doc["_id"] = result.inserted_id
+            
+            logger.info(f"Sender document created with ID: {result.inserted_id}")
 
             # Initiate AWS SES verification
             verification_result = await self._verify_sender_email(sender_data.email)
+            
+            logger.info(f"AWS SES verification initiation result: {verification_result}")
             
             if verification_result["success"]:
                 # Update verification status
@@ -111,6 +137,9 @@ class SenderService:
                     {"_id": result.inserted_id},
                     {"$set": {"verification_status": "pending"}}
                 )
+                
+                logger.info(f"Verification email sent successfully to {sender_data.email}")
+                logger.info(f"Sender status set to 'pending' in database")
                 
                 return {
                     "success": True,
@@ -121,6 +150,7 @@ class SenderService:
             else:
                 # Delete the sender if verification failed
                 await self.collection.delete_one({"_id": result.inserted_id})
+                logger.error(f"Verification failed for {sender_data.email}: {verification_result}")
                 return verification_result
 
         except Exception as e:
@@ -133,31 +163,72 @@ class SenderService:
     async def get_user_senders(self, user_id: str) -> List[Dict]:
         """Get all sender emails for a user."""
         try:
+            logger.info(f"Getting senders for user_id: {user_id}")
+            
             senders = []
+            
+            if self.collection is None:
+                logger.error("Senders collection not available")
+                return []
+            
             cursor = self.collection.find({"user_id": user_id}).sort("created_at", -1)
             
             async for sender in cursor:
-                # Check current verification status with AWS SES
-                verification_status = await self._check_verification_status(sender["email"])
-                
-                # Update status if changed
-                if verification_status != sender["verification_status"]:
-                    await self.collection.update_one(
-                        {"_id": sender["_id"]},
-                        {"$set": {"verification_status": verification_status}}
-                    )
-                    sender["verification_status"] = verification_status
-                
-                senders.append({
-                    "id": str(sender["_id"]),
-                    "email": sender["email"],
-                    "display_name": sender["display_name"],
-                    "is_default": sender["is_default"],
-                    "verification_status": sender["verification_status"],
-                    "created_at": sender["created_at"],
-                    "updated_at": sender["updated_at"]
-                })
+                try:
+                    # Automatically check AWS SES status for pending emails
+                    current_status = sender["verification_status"]
+                    
+                    # Only check AWS SES if status is pending (to avoid unnecessary API calls)
+                    if current_status == "pending":
+                        logger.info(f"Checking AWS SES status for pending email: {sender['email']}")
+                        aws_status = await self._check_verification_status(sender["email"])
+                        logger.info(f"AWS SES returned status '{aws_status}' for {sender['email']}")
+                        
+                        # Update status if AWS SES shows it's verified
+                        if aws_status == "verified" and current_status != "verified":
+                            await self.collection.update_one(
+                                {"_id": sender["_id"]},
+                                {
+                                    "$set": {
+                                        "verification_status": "verified",
+                                        "updated_at": datetime.utcnow()
+                                    }
+                                }
+                            )
+                            current_status = "verified"
+                            logger.info(f"Auto-updated sender {sender['email']} to verified status")
+                        
+                        # Update status if AWS SES shows it failed
+                        elif aws_status == "failed" and current_status != "failed":
+                            await self.collection.update_one(
+                                {"_id": sender["_id"]},
+                                {
+                                    "$set": {
+                                        "verification_status": "failed",
+                                        "updated_at": datetime.utcnow()
+                                    }
+                                }
+                            )
+                            current_status = "failed"
+                            logger.info(f"Auto-updated sender {sender['email']} to failed status")
+                        else:
+                            logger.info(f"No status change needed for {sender['email']}: AWS={aws_status}, Current={current_status}")
+                    
+                    senders.append({
+                        "id": str(sender["_id"]),
+                        "email": sender["email"],
+                        "display_name": sender["display_name"],
+                        "is_default": sender["is_default"],
+                        "verification_status": current_status,
+                        "created_at": sender["created_at"],
+                        "updated_at": sender["updated_at"]
+                    })
+                except Exception as sender_error:
+                    logger.error(f"Error processing sender {sender.get('_id', 'unknown')}: {sender_error}")
+                    # Continue processing other senders
+                    continue
             
+            logger.info(f"Found {len(senders)} senders for user {user_id}")
             return senders
 
         except Exception as e:
@@ -179,18 +250,35 @@ class SenderService:
                     "error": "Sender not found or access denied"
                 }
 
+            sender_email = sender["email"]
+            logger.info(f"Deleting sender {sender_email} for user {user_id}")
+
+            # Delete from AWS SES first
+            try:
+                self.ses_client.delete_identity(Identity=sender_email)
+                logger.info(f"Successfully removed {sender_email} from AWS SES")
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                error_message = e.response['Error']['Message']
+                logger.warning(f"AWS SES deletion warning for {sender_email}: {error_code} - {error_message}")
+                # Continue with database deletion even if AWS SES deletion fails
+            except Exception as e:
+                logger.warning(f"Error removing {sender_email} from AWS SES: {e}")
+                # Continue with database deletion even if AWS SES deletion fails
+
             # Delete from database
             result = await self.collection.delete_one({"_id": ObjectId(sender_id)})
             
             if result.deleted_count > 0:
+                logger.info(f"Successfully deleted sender {sender_email} from database")
                 return {
                     "success": True,
-                    "message": "Sender deleted successfully"
+                    "message": f"Sender {sender_email} deleted successfully (removed from both database and AWS SES)"
                 }
             else:
                 return {
                     "success": False,
-                    "error": "Failed to delete sender"
+                    "error": "Failed to delete sender from database"
                 }
 
         except Exception as e:
@@ -308,8 +396,12 @@ class SenderService:
                 Identities=[email]
             )
             
+            logger.info(f"AWS SES verification response for {email}: {response}")
+            
             if email in response['VerificationAttributes']:
                 status = response['VerificationAttributes'][email]['VerificationStatus']
+                logger.info(f"AWS SES verification status for {email}: {status}")
+                
                 if status == 'Success':
                     return 'verified'
                 elif status == 'Pending':
@@ -317,6 +409,7 @@ class SenderService:
                 else:
                     return 'failed'
             else:
+                logger.info(f"No verification attributes found for {email}")
                 return 'not_found'
                 
         except Exception as e:
@@ -360,4 +453,94 @@ class SenderService:
             return {
                 "success": False,
                 "error": f"Failed to resend verification: {str(e)}"
+            } 
+
+    async def verify_sender_manually(self, user_id: str, sender_id: str) -> Dict:
+        """Manually verify a sender email (called when user clicks verification link)."""
+        try:
+            # Check if sender belongs to user
+            sender = await self.collection.find_one({
+                "_id": ObjectId(sender_id),
+                "user_id": user_id
+            })
+            
+            if not sender:
+                return {
+                    "success": False,
+                    "error": "Sender not found or access denied"
+                }
+
+            # Check current verification status with AWS SES
+            verification_status = await self._check_verification_status(sender["email"])
+            
+            if verification_status == 'verified':
+                # Update verification status in database
+                await self.collection.update_one(
+                    {"_id": ObjectId(sender_id)},
+                    {
+                        "$set": {
+                            "verification_status": "verified",
+                            "updated_at": datetime.utcnow()
+                        }
+                    }
+                )
+                
+                return {
+                    "success": True,
+                    "message": f"Email {sender['email']} verified successfully!"
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Email verification not confirmed by AWS SES. Status: {verification_status}"
+                }
+
+        except Exception as e:
+            logger.error(f"Error verifying sender manually: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to verify sender: {str(e)}"
+            }
+
+    async def check_verification_status(self, user_id: str, sender_id: str) -> Dict:
+        """Check verification status of a sender email with AWS SES."""
+        try:
+            # Check if sender belongs to user
+            sender = await self.collection.find_one({
+                "_id": ObjectId(sender_id),
+                "user_id": user_id
+            })
+            
+            if not sender:
+                return {
+                    "success": False,
+                    "error": "Sender not found or access denied"
+                }
+
+            # Check current verification status with AWS SES
+            verification_status = await self._check_verification_status(sender["email"])
+            
+            # Update status in database if it has changed
+            if verification_status != sender["verification_status"]:
+                await self.collection.update_one(
+                    {"_id": ObjectId(sender_id)},
+                    {
+                        "$set": {
+                            "verification_status": verification_status,
+                            "updated_at": datetime.utcnow()
+                        }
+                    }
+                )
+            
+            return {
+                "success": True,
+                "verification_status": verification_status,
+                "email": sender["email"]
+            }
+
+        except Exception as e:
+            logger.error(f"Error checking verification status: {e}")
+            return {
+                "success": False,
+                "error": f"Failed to check verification status: {str(e)}"
             } 

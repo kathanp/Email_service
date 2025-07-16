@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navigation from './Navigation';
 import Sidebar from './Sidebar';
+import Footer from './Footer';
 import './Layout.css';
 import { Rocket } from 'lucide-react';
 
@@ -41,6 +42,7 @@ function Layout({ children }) {
           <div className="page-content">
             {children}
           </div>
+          <Footer />
         </div>
       </div>
     </div>
