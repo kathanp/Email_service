@@ -6,18 +6,16 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python3 -m uvicorn server.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
-    plan: starter
+    plan: free
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.0"
 
   # Frontend Static Site
-  - type: web
+  - type: static
     name: email-bot-frontend
-    env: static
     buildCommand: cd client && npm ci && npm run build
     staticPublishPath: ./client/build
-    plan: starter
     envVars:
       - key: NODE_VERSION
         value: "18.x"
