@@ -500,8 +500,8 @@
   max-width: 80rem;
   margin: 0 auto 4rem;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
   align-items: start;
 }
 
@@ -857,8 +857,7 @@
   }
   
   .features-grid,
-  .testimonials-grid,
-  .pricing-cards-preview {
+  .testimonials-grid {
     grid-template-columns: 1fr;
   }
   
@@ -919,5 +918,10 @@
   .testimonial-card,
   .pricing-card-preview {
     padding: 1.5rem;
+  }
+  
+  .pricing-cards-preview {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }

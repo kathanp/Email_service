@@ -141,6 +141,15 @@ function Landing() {
       popular: false
     },
     {
+      name: "Starter",
+      price: "$4.99",
+      period: "month",
+      description: "Great for small businesses",
+      features: ["1,000/mo emails", "3 senders", "10 templates", "Advanced analytics"],
+      color: "cyan",
+      popular: false
+    },
+    {
       name: "Professional",
       price: "$14.99",
       period: "month",
@@ -369,16 +378,6 @@ function Landing() {
               </button>
             </div>
           ))}
-        </div>
-
-        <div className="pricing-cta animate-on-scroll"
-             style={{ opacity: isVisible[15] ? 1 : 0, transform: isVisible[15] ? 'translateY(0)' : 'translateY(40px)' }}>
-          <Link to="/pricing" className="view-all-pricing">
-            <span>View All Pricing Plans</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-          </Link>
         </div>
       </section>
 

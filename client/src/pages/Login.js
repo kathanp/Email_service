@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config';
 import './AuthPage.css';
 
@@ -153,6 +153,14 @@ function AuthPage() {
 
       <div className="auth-content">
         <div className="auth-card">
+          {/* Back to Website Button */}
+          <Link to="/" className="back-to-website">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back to MailsFlow website</span>
+          </Link>
+          
           <div className="auth-header">
             <h1>{isLogin ? 'MailsFlow' : 'Create Account'}</h1>
             <p>{isLogin ? 'Sign in to your account' : 'Join us today'}</p>

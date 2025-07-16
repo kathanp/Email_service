@@ -12,12 +12,25 @@ function Navbar() {
   useEffect(() => {
     // Get user data from localStorage
     const userData = localStorage.getItem('user');
-    if (userData && userData !== 'null' && userData !== 'undefined') {
+    const token = localStorage.getItem('token');
+    
+    // Only set user if both user data and token exist
+    if (userData && token && userData !== 'null' && userData !== 'undefined' && token !== 'null' && token !== 'undefined') {
       try {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        // Validate that user object has required fields
+        if (parsedUser && (parsedUser.email || parsedUser.id)) {
+          setUser(parsedUser);
+        } else {
+          // Clear invalid user data
+          clearAuthData();
+        }
       } catch (error) {
-        localStorage.removeItem('user');
+        clearAuthData();
       }
+    } else {
+      // Clear any incomplete auth data
+      clearAuthData();
     }
 
     // Handle scroll effect
@@ -29,9 +42,14 @@ function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleLogout = () => {
+  const clearAuthData = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setUser(null);
+  };
+
+  const handleLogout = () => {
+    clearAuthData();
     window.location.href = '/login';
   };
 

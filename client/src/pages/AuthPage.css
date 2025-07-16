@@ -60,7 +60,7 @@
   backdrop-filter: blur(20px);
   border: 1px solid rgba(71, 85, 105, 0.5);
   border-radius: 1.5rem;
-  padding: 3rem;
+  padding: 1rem 3rem;
   width: 100%;
   max-width: 28rem;
   position: relative;
@@ -91,6 +91,35 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Back to Website Button */
+.back-to-website {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.back-to-website:hover {
+  color: #06b6d4;
+  text-decoration: none;
+}
+
+.back-to-website svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.back-to-website:hover svg {
+  transform: translateX(-3px);
 }
 
 /* Header */
