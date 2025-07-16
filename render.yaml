@@ -15,8 +15,9 @@ services:
   - type: web
     name: email-bot-frontend
     runtime: static
-    buildCommand: cd client && npm ci && npm run build
-    staticPublishPath: ./client/build
+    rootDir: client
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./build
     envVars:
       - key: NODE_VERSION
         value: "18.x"
