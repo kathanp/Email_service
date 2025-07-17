@@ -34,6 +34,17 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
+# Health check endpoint for Render
+@app.get("/")
+async def health_check():
+    """Health check endpoint for deployment verification."""
+    return {"status": "healthy", "service": "email-bot-backend", "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/health")
+async def health():
+    """Alternative health check endpoint."""
+    return {"status": "ok"}
+
 # Include routes
 app.include_router(senders.router, prefix="/api/senders", tags=["senders"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["subscriptions"])
