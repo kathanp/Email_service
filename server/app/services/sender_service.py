@@ -64,6 +64,18 @@ class SenderService:
             
             logger.info(f"User found: {user_doc.get('email')}")
             
+            # Check if email is already used by any user
+            existing_sender = await self.collection.find_one({
+                "email": sender_data.email,
+                "verification_status": {"$in": ["pending", "verified"]}  # Only check active senders
+            })
+            
+            if existing_sender:
+                return {
+                    "success": False,
+                    "error": "This sender email is already registered by another user. Each sender email can only be used by one user."
+                }
+            
             # Create UserResponse object for subscription service
             from ..models.user import UserResponse
             user = UserResponse(
@@ -93,7 +105,8 @@ class SenderService:
             # Check if sender already exists for this user
             existing_sender = await self.collection.find_one({
                 "user_id": user_id,
-                "email": sender_data.email
+                "email": sender_data.email,
+                "verification_status": {"$in": ["pending", "verified"]}  # Only check active senders
             })
             
             if existing_sender:
@@ -132,21 +145,34 @@ class SenderService:
             logger.info(f"AWS SES verification initiation result: {verification_result}")
             
             if verification_result["success"]:
-                # Update verification status
-                await self.collection.update_one(
-                    {"_id": result.inserted_id},
-                    {"$set": {"verification_status": "pending"}}
-                )
-                
-                logger.info(f"Verification email sent successfully to {sender_data.email}")
-                logger.info(f"Sender status set to 'pending' in database")
-                
-                return {
-                    "success": True,
-                    "message": f"Verification email sent to {sender_data.email}",
-                    "sender_id": str(result.inserted_id),
-                    "verification_status": "pending"
-                }
+                # If email is already verified in AWS SES, mark it as verified
+                if "already verified" in verification_result["message"].lower():
+                    await self.collection.update_one(
+                        {"_id": result.inserted_id},
+                        {"$set": {"verification_status": "verified"}}
+                    )
+                    return {
+                        "success": True,
+                        "message": "Email already verified in AWS SES",
+                        "sender_id": str(result.inserted_id),
+                        "verification_status": "verified"
+                    }
+                else:
+                    # Update verification status to pending
+                    await self.collection.update_one(
+                        {"_id": result.inserted_id},
+                        {"$set": {"verification_status": "pending"}}
+                    )
+                    
+                    logger.info(f"Verification email sent successfully to {sender_data.email}")
+                    logger.info(f"Sender status set to 'pending' in database")
+                    
+                    return {
+                        "success": True,
+                        "message": f"Verification email sent to {sender_data.email}",
+                        "sender_id": str(result.inserted_id),
+                        "verification_status": "pending"
+                    }
             else:
                 # Delete the sender if verification failed
                 await self.collection.delete_one({"_id": result.inserted_id})
@@ -361,6 +387,21 @@ class SenderService:
     async def _verify_sender_email(self, email: str) -> Dict:
         """Initiate AWS SES verification for a sender email."""
         try:
+            # First check if email is already verified in AWS SES
+            response = self.ses_client.get_identity_verification_attributes(
+                Identities=[email]
+            )
+            
+            if email in response['VerificationAttributes']:
+                status = response['VerificationAttributes'][email]['VerificationStatus']
+                if status == 'Success':
+                    # If already verified, return success without sending new verification
+                    return {
+                        "success": True,
+                        "message": f"Email {email} is already verified in AWS SES"
+                    }
+            
+            # If not verified or not found, send verification email
             response = self.ses_client.verify_email_identity(EmailAddress=email)
             logger.info(f"Verification email sent to {email}")
             return {
@@ -402,12 +443,13 @@ class SenderService:
                 status = response['VerificationAttributes'][email]['VerificationStatus']
                 logger.info(f"AWS SES verification status for {email}: {status}")
                 
+                # Map AWS SES status to our status
                 if status == 'Success':
                     return 'verified'
-                elif status == 'Pending':
-                    return 'pending'
-                else:
+                elif status == 'Failed':
                     return 'failed'
+                else:
+                    return 'pending'
             else:
                 logger.info(f"No verification attributes found for {email}")
                 return 'not_found'
@@ -470,29 +512,48 @@ class SenderService:
                     "error": "Sender not found or access denied"
                 }
 
-            # Check current verification status with AWS SES
-            verification_status = await self._check_verification_status(sender["email"])
-            
-            if verification_status == 'verified':
-                # Update verification status in database
-                await self.collection.update_one(
-                    {"_id": ObjectId(sender_id)},
-                    {
-                        "$set": {
-                            "verification_status": "verified",
-                            "updated_at": datetime.utcnow()
-                        }
-                    }
+            # Check AWS SES verification status directly
+            try:
+                response = self.ses_client.get_identity_verification_attributes(
+                    Identities=[sender["email"]]
                 )
                 
-                return {
-                    "success": True,
-                    "message": f"Email {sender['email']} verified successfully!"
-                }
-            else:
+                if sender["email"] in response['VerificationAttributes']:
+                    aws_status = response['VerificationAttributes'][sender["email"]]['VerificationStatus']
+                    logger.info(f"AWS SES verification status for {sender['email']}: {aws_status}")
+                    
+                    if aws_status == 'Success':
+                        # Update verification status in database
+                        await self.collection.update_one(
+                            {"_id": ObjectId(sender_id)},
+                            {
+                                "$set": {
+                                    "verification_status": "verified",
+                                    "updated_at": datetime.utcnow()
+                                }
+                            }
+                        )
+                        
+                        return {
+                            "success": True,
+                            "message": f"Email {sender['email']} verified successfully!"
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "error": f"Email verification not confirmed by AWS SES. Status: {aws_status}"
+                        }
+                else:
+                    return {
+                        "success": False,
+                        "error": "Email not found in AWS SES"
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error checking AWS SES status for {sender['email']}: {e}")
                 return {
                     "success": False,
-                    "error": f"Email verification not confirmed by AWS SES. Status: {verification_status}"
+                    "error": f"Failed to check AWS SES status: {str(e)}"
                 }
 
         except Exception as e:
@@ -517,26 +578,53 @@ class SenderService:
                     "error": "Sender not found or access denied"
                 }
 
-            # Check current verification status with AWS SES
-            verification_status = await self._check_verification_status(sender["email"])
-            
-            # Update status in database if it has changed
-            if verification_status != sender["verification_status"]:
-                await self.collection.update_one(
-                    {"_id": ObjectId(sender_id)},
-                    {
-                        "$set": {
-                            "verification_status": verification_status,
-                            "updated_at": datetime.utcnow()
-                        }
-                    }
+            # Check AWS SES verification status directly
+            try:
+                response = self.ses_client.get_identity_verification_attributes(
+                    Identities=[sender["email"]]
                 )
-            
-            return {
-                "success": True,
-                "verification_status": verification_status,
-                "email": sender["email"]
-            }
+                
+                if sender["email"] in response['VerificationAttributes']:
+                    aws_status = response['VerificationAttributes'][sender["email"]]['VerificationStatus']
+                    logger.info(f"AWS SES verification status for {sender['email']}: {aws_status}")
+                    
+                    # Map AWS status to our status
+                    if aws_status == 'Success':
+                        verification_status = 'verified'
+                    elif aws_status == 'Failed':
+                        verification_status = 'failed'
+                    else:
+                        verification_status = 'pending'
+                    
+                    # Update status in database if it has changed
+                    if verification_status != sender["verification_status"]:
+                        await self.collection.update_one(
+                            {"_id": ObjectId(sender_id)},
+                            {
+                                "$set": {
+                                    "verification_status": verification_status,
+                                    "updated_at": datetime.utcnow()
+                                }
+                            }
+                        )
+                    
+                    return {
+                        "success": True,
+                        "verification_status": verification_status,
+                        "email": sender["email"]
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": "Email not found in AWS SES"
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error checking AWS SES status for {sender['email']}: {e}")
+                return {
+                    "success": False,
+                    "error": f"Failed to check AWS SES status: {str(e)}"
+                }
 
         except Exception as e:
             logger.error(f"Error checking verification status: {e}")
