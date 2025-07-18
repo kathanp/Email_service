@@ -74,7 +74,7 @@ class FileService:
                 file_size=len(file_content),
                 description=description,
                 user_id=user_id,  # 🔒 CRITICAL: User isolation
-                file_data=file_content
+                file_data=file_content  # Store as raw bytes
             )
 
             file_dict = file_data.dict()
@@ -631,19 +631,33 @@ class FileService:
             # Verify Excel processing dependencies
             self._verify_excel_processing()
             
-            # Create BytesIO object
+            # Create BytesIO object and ensure it's properly encoded
+            if isinstance(file_data, str):
+                # If somehow the data was stored as string, encode it
+                file_data = file_data.encode('utf-8')
+            elif isinstance(file_data, bytes):
+                # If it's already bytes, use as is
+                pass
+            else:
+                # If it's neither string nor bytes, raise error
+                raise ValueError(f"Invalid file data type: {type(file_data)}")
+            
             excel_buffer = io.BytesIO(file_data)
             
             try:
                 # Try reading with openpyxl engine first
+                logger.info("Attempting to read Excel file with openpyxl engine")
                 df = pd.read_excel(excel_buffer, engine='openpyxl')
+                logger.info("Successfully read Excel file with openpyxl engine")
             except Exception as e1:
                 logger.warning(f"Failed to read Excel with openpyxl: {e1}")
                 try:
                     # Reset buffer position
                     excel_buffer.seek(0)
                     # Try reading with xlrd engine for older .xls files
+                    logger.info("Attempting to read Excel file with xlrd engine")
                     df = pd.read_excel(excel_buffer, engine='xlrd')
+                    logger.info("Successfully read Excel file with xlrd engine")
                 except Exception as e2:
                     logger.error(f"Failed to read Excel with both engines: openpyxl error: {e1}, xlrd error: {e2}")
                     raise HTTPException(
@@ -687,6 +701,7 @@ class FileService:
                             cleaned_contact[key] = str(value).strip()
                     cleaned_contacts.append(cleaned_contact)
                 
+                logger.info(f"Successfully processed Excel file with {len(cleaned_contacts)} contacts")
                 return cleaned_contacts
                 
             except Exception as e:
