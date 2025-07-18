@@ -348,36 +348,67 @@ class FileService:
             )
 
     async def preview_file(self, file_id: str, user_id: str) -> dict:
-        """Preview the data from a processed file."""
+        """Preview the data from a file."""
         try:
             files_collection = self._get_files_collection()
             file = await self.get_file_by_id(file_id, user_id)
             
-            if not file.processed:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="File must be processed before previewing"
-                )
-
             # Get file data from database
             file_doc = await files_collection.find_one({"_id": ObjectId(file_id)})
             file_data = file_doc["file_data"]
 
-            # Extract preview data based on file type
-            contacts = []
-            if file.file_type == "excel":
-                contacts = await self._preview_excel_file(file_data)
-            elif file.file_type == "pdf":
-                contacts = await self._preview_pdf_file(file_data)
-            elif file.file_type == "csv":
-                contacts = await self._preview_csv_file(file_data)
+            # Process file if not already processed
+            if not file.processed:
+                try:
+                    # Process based on file type
+                    contacts = []
+                    if file.file_type == "excel":
+                        contacts = await self._preview_excel_file(file_data)
+                    elif file.file_type == "pdf":
+                        contacts = await self._preview_pdf_file(file_data)
+                    elif file.file_type == "csv":
+                        contacts = await self._preview_csv_file(file_data)
+                    else:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Unsupported file type for preview"
+                        )
+                    
+                    # Update file as processed if preview was successful
+                    if contacts:
+                        await files_collection.update_one(
+                            {"_id": ObjectId(file_id)},
+                            {"$set": {
+                                "processed": True,
+                                "contacts_count": len(contacts),
+                                "updated_at": datetime.utcnow()
+                            }}
+                        )
+                    
+                    return {"contacts": contacts, "file_id": file_id}
+                    
+                except Exception as e:
+                    logger.error(f"Error processing file during preview: {str(e)}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Error processing file: {str(e)}"
+                    )
             else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Unsupported file type for preview"
-                )
+                # Extract preview data based on file type
+                contacts = []
+                if file.file_type == "excel":
+                    contacts = await self._preview_excel_file(file_data)
+                elif file.file_type == "pdf":
+                    contacts = await self._preview_pdf_file(file_data)
+                elif file.file_type == "csv":
+                    contacts = await self._preview_csv_file(file_data)
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Unsupported file type for preview"
+                    )
 
-            return {"contacts": contacts, "file_id": file_id}
+                return {"contacts": contacts, "file_id": file_id}
 
         except HTTPException:
             raise
@@ -550,13 +581,17 @@ class FileService:
     async def _preview_excel_file(self, file_data: bytes) -> list:
         """Preview Excel file data."""
         try:
-            import pandas as pd
-            import io
-            
             # Check if pandas is available
-            if not 'pd' in globals():
-                raise ImportError("pandas is not available")
-                
+            try:
+                import pandas as pd
+                import io
+            except ImportError as e:
+                logger.error(f"Required libraries not available: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Excel processing temporarily disabled. Required libraries not available."
+                )
+            
             # Create BytesIO object
             excel_buffer = io.BytesIO(file_data)
             
@@ -577,24 +612,49 @@ class FileService:
                         detail="Error processing Excel file. Please ensure it's a valid Excel file."
                     )
             
-            # Convert DataFrame to list of dictionaries
-            contacts = df.to_dict('records')
-            
             # Validate the data
-            if not contacts:
+            if df.empty:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No data found in Excel file"
+                    detail="Excel file is empty"
                 )
             
-            return contacts
+            # Convert DataFrame to list of dictionaries
+            try:
+                contacts = df.to_dict('records')
+                
+                # Validate contacts
+                if not contacts:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No data found in Excel file"
+                    )
+                
+                # Clean up the data
+                cleaned_contacts = []
+                for contact in contacts:
+                    # Remove NaN values and convert to appropriate types
+                    cleaned_contact = {}
+                    for key, value in contact.items():
+                        if pd.isna(value):
+                            cleaned_contact[key] = ""
+                        elif isinstance(value, (int, float)):
+                            cleaned_contact[key] = str(value)
+                        else:
+                            cleaned_contact[key] = str(value).strip()
+                    cleaned_contacts.append(cleaned_contact)
+                
+                return cleaned_contacts
+                
+            except Exception as e:
+                logger.error(f"Error converting Excel data to contacts: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Error processing Excel data. Please check the file format."
+                )
             
-        except ImportError as e:
-            logger.error(f"Excel processing dependencies not available: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Excel processing temporarily disabled. Please try again later."
-            )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error previewing Excel file: {str(e)}")
             raise HTTPException(
