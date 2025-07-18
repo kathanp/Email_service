@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import './Landing.css';
 import Navbar from '../Component/navbar';
 import Footer from '../Component/footer';
+import staticPricing from './staticPricing';
 
 function Landing() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -221,7 +222,7 @@ function Landing() {
                 </div>
               </Link>
               
-              <Link to="/pricing" className="btn-secondary">
+              <Link to="/staticPricing" className="btn-secondary">
                 <span>View Plans</span>
                 <div className="btn-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">

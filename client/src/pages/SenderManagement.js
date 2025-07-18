@@ -13,14 +13,37 @@ function SenderManagement() {
   useEffect(() => {
     fetchSenders();
     
-    // Set up automatic refresh every 1 seconds to check for verification updates
+    // Set up automatic refresh every 5 seconds to check for verification updates
     const interval = setInterval(() => {
       fetchSenders();
-    }, 1000);
+    }, 500);  
 
     // Cleanup interval on component unmount
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Empty dependency array, no 'ok' needed
+
+  // Add function to manually verify sender
+  const handleVerifySender = async (senderId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_ENDPOINTS.SENDERS}/${senderId}/verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        await fetchSenders(); // Refresh the list to show updated status
+        setSuccess('Email verified successfully!');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to verify email');
+      }
+    } catch (error) {
+      setError('Network error verifying email');
+    }
+  };
 
   const fetchSenders = async () => {
     try {
@@ -35,6 +58,11 @@ function SenderManagement() {
         const data = await response.json();
         // Backend returns array directly, not wrapped in data.senders
         setSenders(Array.isArray(data) ? data : []);
+        
+        // Clear success message after 5 seconds
+        if (success) {
+          setTimeout(() => setSuccess(''), 5000);
+        }
       } else {
         setError('Failed to load sender emails');
       }
@@ -179,118 +207,71 @@ function SenderManagement() {
 
   return (
     <div className="sender-management-container">
-      <div className="sender-management-header">
-        <h1>Sender Management</h1>
-        <p>Manage your verified sender emails for sending campaigns</p>
-      </div>
-
+      <h2>Sender Email Management</h2>
+      
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
 
-      {/* Add New Sender Form */}
       <div className="add-sender-form">
-        <h2>Add New Sender Email</h2>
-        <p className="form-description">
-          Add a new sender email address. You'll need to verify it through AWS SES before you can use it to send campaigns.
-        </p>
-        <form onSubmit={handleAddSender}>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="senderName">Sender Name</label>
-              <input
-                type="text"
-                id="senderName"
-                value={newSender.display_name}
-                onChange={(e) => setNewSender({ ...newSender, display_name: e.target.value })}
-                placeholder="Enter sender name"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="senderEmail">Email Address</label>
-              <input
-                type="email"
-                id="senderEmail"
-                value={newSender.email}
-                onChange={(e) => setNewSender({ ...newSender, email: e.target.value })}
-                placeholder="Enter email address"
-                required
-              />
-            </div>
-            <button 
-              type="submit" 
-              className="btn-primary"
-              disabled={isAdding}
-            >
-              {isAdding ? 'Adding...' : 'Add Sender'}
-            </button>
+        <div className="form-container">
+          <div className="input-group">
+            <label>Email:</label>
+            <input
+              type="email"
+              value={newSender.email}
+              onChange={(e) => setNewSender(prev => ({ ...prev, email: e.target.value }))}
+              required
+            />
           </div>
-        </form>
-
+          <div className="input-group">
+            <label>Display Name:</label>
+            <input
+              type="text"
+              value={newSender.display_name}
+              onChange={(e) => setNewSender(prev => ({ ...prev, display_name: e.target.value }))}
+              required
+            />
+          </div>
+          <button type="button" onClick={handleAddSender} disabled={isAdding} className="add-button">
+            {isAdding ? 'Adding...' : 'Add Sender'}
+          </button>
+        </div>
       </div>
 
-      {/* Senders List */}
       <div className="senders-list">
-        <div className="senders-header">
-          <h2>Your Sender Emails</h2>
-        </div>
-        {(!senders || senders.length === 0) ? (
-          <div className="no-senders">
-            <p>No sender emails added yet. Add your first sender email above.</p>
-          </div>
+        <h3>Your Sender Emails</h3>
+        {senders.length === 0 ? (
+          <p>No sender emails added yet.</p>
         ) : (
-          <div className="senders-grid">
-            {Array.isArray(senders) && senders.map((sender) => (
-              <div key={sender.id} className="sender-card">
+          <ul>
+            {senders.map(sender => (
+              <li key={sender.id} className={`sender-item ${sender.verification_status}`}>
                 <div className="sender-info">
-                  <h3>{sender.display_name || sender.email || 'Unknown Sender'}</h3>
-                  <p className="sender-email">{sender.email}</p>
-                  <div className="sender-status">
-                    <span 
-                      className={`status-badge status-${getStatusColor(sender.verification_status || 'unknown')}`}
-                    >
-                      {sender.verification_status || 'unknown'}
-                    </span>
-                    {sender.is_default && (
-                      <span className="default-badge">Default</span>
-                    )}
-                  </div>
+                  <strong>{sender.display_name}</strong>
+                  <span className="email">{sender.email}</span>
+                  <span className="status" style={{ color: getStatusColor(sender.verification_status) }}>
+                    {sender.verification_status}
+                  </span>
+                  {sender.is_default && <span className="default-badge">Default</span>}
                 </div>
                 <div className="sender-actions">
-                  {sender.verification_status === 'verified' && !sender.is_default && (
-                    <button
-                      onClick={() => handleSetDefault(sender.id)}
-                      className="btn-secondary"
-                    >
-                      Set as Default
-                    </button>
-                  )}
                   {sender.verification_status === 'pending' && (
-                    <button
-                      onClick={() => handleResendVerification(sender.id)}
-                      className="btn-secondary"
-                    >
+                    <button onClick={() => handleResendVerification(sender.id)}>
                       Resend Verification
                     </button>
                   )}
-                  {sender.verification_status === 'failed' && (
-                    <button
-                      onClick={() => handleResendVerification(sender.id)}
-                      className="btn-secondary"
-                    >
-                      Retry Verification
+                  {sender.verification_status === 'verified' && !sender.is_default && (
+                    <button onClick={() => handleSetDefault(sender.id)}>
+                      Set as Default
                     </button>
                   )}
-                  <button
-                    onClick={() => handleDeleteSender(sender.id)}
-                    className="btn-danger"
-                  >
+                  <button onClick={() => handleDeleteSender(sender.id)} className="delete">
                     Delete
                   </button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>
