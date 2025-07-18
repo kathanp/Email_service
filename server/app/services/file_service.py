@@ -551,13 +551,56 @@ class FileService:
         """Preview Excel file data."""
         try:
             import pandas as pd
-            df = pd.read_excel(io.BytesIO(file_data))
+            import io
+            
+            # Check if pandas is available
+            if not 'pd' in globals():
+                raise ImportError("pandas is not available")
+                
+            # Create BytesIO object
+            excel_buffer = io.BytesIO(file_data)
+            
+            try:
+                # Try reading with openpyxl engine first
+                df = pd.read_excel(excel_buffer, engine='openpyxl')
+            except Exception as e1:
+                logger.warning(f"Failed to read Excel with openpyxl: {e1}")
+                try:
+                    # Reset buffer position
+                    excel_buffer.seek(0)
+                    # Try reading with xlrd engine for older .xls files
+                    df = pd.read_excel(excel_buffer, engine='xlrd')
+                except Exception as e2:
+                    logger.error(f"Failed to read Excel with both engines: openpyxl error: {e1}, xlrd error: {e2}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Error processing Excel file. Please ensure it's a valid Excel file."
+                    )
+            
             # Convert DataFrame to list of dictionaries
             contacts = df.to_dict('records')
+            
+            # Validate the data
+            if not contacts:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No data found in Excel file"
+                )
+            
             return contacts
+            
+        except ImportError as e:
+            logger.error(f"Excel processing dependencies not available: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Excel processing temporarily disabled. Please try again later."
+            )
         except Exception as e:
             logger.error(f"Error previewing Excel file: {str(e)}")
-            return []
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error processing Excel file: {str(e)}"
+            )
 
     async def _preview_pdf_file(self, file_data: bytes) -> list:
         """Preview PDF file data."""
@@ -583,10 +626,67 @@ class FileService:
 
     async def _process_excel_file(self, file_data: bytes) -> int:
         """Process Excel file to extract contacts."""
-        # Placeholder implementation
-        # In a real implementation, you would parse the Excel file
-        # and extract contact information
-        return 0
+        try:
+            import pandas as pd
+            import io
+            
+            # Check if pandas is available
+            if not 'pd' in globals():
+                raise ImportError("pandas is not available")
+                
+            # Create BytesIO object
+            excel_buffer = io.BytesIO(file_data)
+            
+            try:
+                # Try reading with openpyxl engine first
+                df = pd.read_excel(excel_buffer, engine='openpyxl')
+            except Exception as e1:
+                logger.warning(f"Failed to read Excel with openpyxl: {e1}")
+                try:
+                    # Reset buffer position
+                    excel_buffer.seek(0)
+                    # Try reading with xlrd engine for older .xls files
+                    df = pd.read_excel(excel_buffer, engine='xlrd')
+                except Exception as e2:
+                    logger.error(f"Failed to read Excel with both engines: openpyxl error: {e1}, xlrd error: {e2}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Error processing Excel file. Please ensure it's a valid Excel file."
+                    )
+            
+            # Validate required columns
+            required_columns = ['email']  # Add more required columns if needed
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Missing required columns: {', '.join(missing_columns)}"
+                )
+            
+            # Count valid email addresses
+            valid_emails = df['email'].dropna().str.contains('@').sum()
+            
+            if valid_emails == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No valid email addresses found in file"
+                )
+            
+            return valid_emails
+            
+        except ImportError as e:
+            logger.error(f"Excel processing dependencies not available: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Excel processing temporarily disabled. Please try again later."
+            )
+        except Exception as e:
+            logger.error(f"Error processing Excel file: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error processing Excel file: {str(e)}"
+            )
 
     async def _process_pdf_file(self, file_data: bytes) -> int:
         """Process PDF file to extract contacts."""
