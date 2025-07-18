@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from bson import ObjectId
 import io
 import logging
@@ -9,13 +9,33 @@ from fastapi import HTTPException, status, UploadFile
 from ..db.mongodb import MongoDB
 from ..models.file import FileCreate, FileUpdate, FileInDB, FileResponse
 
+# Excel processing imports
+try:
+    import pandas as pd
+    import numpy as np
+    import openpyxl
+    import xlrd
+    EXCEL_PROCESSING_AVAILABLE = all([
+        'pandas' in globals(),
+        'numpy' in globals(),
+        'openpyxl' in globals(),
+        'xlrd' in globals()
+    ])
+except ImportError as e:
+    EXCEL_PROCESSING_AVAILABLE = False
+    logging.error(f"Excel processing dependencies not available: {e}")
+
 logger = logging.getLogger(__name__)
 
 class FileService:
     def __init__(self):
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.allowed_extensions = {'.xlsx', '.xls', '.csv', '.pdf'}
-
+        
+        # Verify Excel processing dependencies
+        if not EXCEL_PROCESSING_AVAILABLE:
+            logger.warning("Excel processing dependencies not available. Some features will be disabled.")
+            
     def _get_files_collection(self):
         """Get files collection."""
         return MongoDB.get_collection("files")
@@ -385,7 +405,13 @@ class FileService:
                             }}
                         )
                     
-                    return {"contacts": contacts, "file_id": file_id}
+                    return {
+                        "contacts": contacts,
+                        "file_id": file_id,
+                        "total_records": len(contacts),
+                        "columns": list(contacts[0].keys()) if contacts else [],
+                        "can_edit": True
+                    }
                     
                 except Exception as e:
                     logger.error(f"Error processing file during preview: {str(e)}")
@@ -408,7 +434,13 @@ class FileService:
                         detail="Unsupported file type for preview"
                     )
 
-                return {"contacts": contacts, "file_id": file_id}
+                return {
+                    "contacts": contacts,
+                    "file_id": file_id,
+                    "total_records": len(contacts),
+                    "columns": list(contacts[0].keys()) if contacts else [],
+                    "can_edit": True
+                }
 
         except HTTPException:
             raise
@@ -419,19 +451,13 @@ class FileService:
                 detail=f"File preview failed: {str(e)}"
             )
 
-    async def update_file_data(self, file_id: str, user_id: str, update_data: dict) -> dict:
+    async def update_file_data(self, file_id: str, user_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update file with new contact data."""
         try:
             files_collection = self._get_files_collection()
             
             # Verify file ownership
             file = await self.get_file_by_id(file_id, user_id)
-            
-            if not file.processed:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="File must be processed before updating"
-                )
             
             # Validate update data
             if "contacts" not in update_data or not isinstance(update_data["contacts"], list):
@@ -442,13 +468,16 @@ class FileService:
             
             logger.info(f"📝 Updating file {file_id} for user {user_id} with {len(update_data['contacts'])} contacts")
             
+            # Verify Excel processing for Excel files
+            if file.file_type == "excel":
+                self._verify_excel_processing()
+            
             # Convert the new contact data to file format based on file type
             updated_file_data = None
-            if file.file_type in ["excel", "csv"]:
-                updated_file_data = await self._convert_contacts_to_file_data(
-                    update_data["contacts"], 
-                    file.file_type
-                )
+            if file.file_type == "excel":
+                updated_file_data = await self._convert_contacts_to_excel(update_data["contacts"])
+            elif file.file_type == "csv":
+                updated_file_data = await self._convert_contacts_to_csv(update_data["contacts"])
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -459,8 +488,8 @@ class FileService:
             update_fields = {
                 "file_data": updated_file_data,
                 "contacts_count": len(update_data["contacts"]),
-                "updated_at": datetime.utcnow(),
-                "last_modified": datetime.utcnow()
+                "processed": True,
+                "updated_at": datetime.utcnow()
             }
             
             result = await files_collection.update_one(
@@ -481,7 +510,10 @@ class FileService:
                 "contacts": update_data["contacts"],
                 "file_id": file_id,
                 "message": "File updated successfully",
-                "contacts_count": len(update_data["contacts"])
+                "contacts_count": len(update_data["contacts"]),
+                "total_records": len(update_data["contacts"]),
+                "columns": list(update_data["contacts"][0].keys()) if update_data["contacts"] else [],
+                "can_edit": True
             }
             
         except HTTPException:
@@ -493,11 +525,11 @@ class FileService:
                 detail=f"File update failed: {str(e)}"
             )
 
-    async def _convert_contacts_to_file_data(self, contacts: list, file_type: str) -> bytes:
-        """Convert contact data back to file format."""
+    async def _convert_contacts_to_excel(self, contacts: List[Dict[str, Any]]) -> bytes:
+        """Convert contact data to Excel format."""
         try:
-            import pandas as pd
-            import io
+            # Verify Excel processing dependencies
+            self._verify_excel_processing()
             
             if not contacts:
                 raise ValueError("No contacts provided")
@@ -505,24 +537,39 @@ class FileService:
             # Create DataFrame from contacts
             df = pd.DataFrame(contacts)
             
-            # Convert to bytes based on file type
+            # Convert to Excel bytes
             buffer = io.BytesIO()
-            
-            if file_type == "excel":
-                df.to_excel(buffer, index=False, engine='openpyxl')
-            elif file_type == "csv":
-                df.to_csv(buffer, index=False)
-            else:
-                raise ValueError(f"Unsupported file type: {file_type}")
-            
+            df.to_excel(buffer, index=False, engine='openpyxl')
             buffer.seek(0)
             return buffer.getvalue()
             
         except Exception as e:
-            logger.error(f"Error converting contacts to file data: {str(e)}")
+            logger.error(f"Error converting contacts to Excel: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to convert contact data: {str(e)}"
+                detail=f"Failed to convert contact data to Excel: {str(e)}"
+            )
+
+    async def _convert_contacts_to_csv(self, contacts: List[Dict[str, Any]]) -> bytes:
+        """Convert contact data to CSV format."""
+        try:
+            if not contacts:
+                raise ValueError("No contacts provided")
+            
+            # Create DataFrame from contacts
+            df = pd.DataFrame(contacts)
+            
+            # Convert to CSV bytes
+            buffer = io.BytesIO()
+            df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            return buffer.getvalue()
+            
+        except Exception as e:
+            logger.error(f"Error converting contacts to CSV: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to convert contact data to CSV: {str(e)}"
             )
 
     async def rename_file(self, file_id: str, user_id: str, new_filename: str) -> dict:
@@ -581,16 +628,8 @@ class FileService:
     async def _preview_excel_file(self, file_data: bytes) -> list:
         """Preview Excel file data."""
         try:
-            # Check if pandas is available
-            try:
-                import pandas as pd
-                import io
-            except ImportError as e:
-                logger.error(f"Required libraries not available: {e}")
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Excel processing temporarily disabled. Required libraries not available."
-                )
+            # Verify Excel processing dependencies
+            self._verify_excel_processing()
             
             # Create BytesIO object
             excel_buffer = io.BytesIO(file_data)
@@ -636,10 +675,14 @@ class FileService:
                     # Remove NaN values and convert to appropriate types
                     cleaned_contact = {}
                     for key, value in contact.items():
-                        if pd.isna(value):
+                        if pd.isna(value) or pd.isnull(value):
                             cleaned_contact[key] = ""
                         elif isinstance(value, (int, float)):
-                            cleaned_contact[key] = str(value)
+                            # Handle integer values without decimal places
+                            if isinstance(value, float) and value.is_integer():
+                                cleaned_contact[key] = str(int(value))
+                            else:
+                                cleaned_contact[key] = str(value)
                         else:
                             cleaned_contact[key] = str(value).strip()
                     cleaned_contacts.append(cleaned_contact)

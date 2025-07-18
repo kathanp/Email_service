@@ -4,7 +4,9 @@ services:
     name: email-bot-backend
     runtime: python
     rootDir: server
-    buildCommand: pip install -r ../requirements.txt
+    buildCommand: |
+      apt-get update && apt-get install -y python3-dev build-essential libxml2-dev libxslt1-dev zlib1g-dev
+      pip install -r ../requirements.txt
     startCommand: python3 -m uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     plan: free
